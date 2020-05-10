@@ -1,0 +1,97 @@
+<html>
+
+	<head>
+	
+		<style type="text/css">
+			html, body {
+				padding: 0;
+				margin: 0;
+			}
+
+			body {
+				background-color: grey;
+			}
+
+			header {
+				position: fixed;
+				top: 0;
+				width: 100%;
+				background-color: grey;
+				opacity: 0.2;
+				padding: 0.3em 0.5em;
+			}
+
+			header:hover {
+				opacity: 0.9;
+			}
+
+			article {
+				text-align: center;
+			}
+
+			img#image {
+				max-width: 99%;
+				max-height: 99%;
+				margin: auto;
+			}
+		</style>
+
+	</head>
+
+	<body>
+
+		<header>
+			<!--
+			<button onclick="external.invoke('move')">move</button>
+			-->
+			<button onclick="previous()">previous</button>
+			<span id="position"></span>
+			<button onclick="next()">next</button>
+			<span id="imgpath"></span>
+		</header>
+
+		<article>
+			<img src="" alt="image" id="image" />
+		</article>
+
+		<script>
+			let position = 0;
+			let images = [];
+
+			function set_images(value) {
+				images = value;
+				position = 0;
+
+				refresh_image();
+			}
+
+			function refresh_image() {
+				document.getElementById("image").src = images[position];
+				document.getElementById("imgpath").innerHTML = images[position];
+				document.getElementById("position").innerHTML = (position + 1) + " / " + images.length;
+			}
+
+			function previous() {
+				if(position <= 0) {
+					position = images.length - 1;
+				} else {
+					position--;
+				}
+
+				refresh_image();
+			}
+
+			function next() {
+				if(position >= (images.length - 1)) {
+					position = 0;
+				} else {
+					position++;
+				}
+
+				refresh_image();
+			}
+		</script>
+
+	</body>
+
+</html>

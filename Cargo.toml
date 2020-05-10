@@ -1,0 +1,13 @@
+[package]
+name = "fractus-atlas"
+version = "1.0.0"
+description = "An image viewer which allows you to quickly move them in folders."
+authors = ["Jimskapt <rami.programmer@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = "^2"
+regex = "^1"
+web-view = "^0.6"
