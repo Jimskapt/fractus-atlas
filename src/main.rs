@@ -1,17 +1,22 @@
+// TODO : translations ?
+
+use rand::Rng;
+
 fn main() {
 	/*
 	let config_env = format!(
 		"{}_CONFIG",
 		String::from(env!("CARGO_PKG_NAME")).to_uppercase()
 	);
-	let default_config_file_name = format!(
-		".{}.conf.toml",
-		String::from(env!("CARGO_PKG_NAME")).to_lowercase()
+	let default_working_folder_name = String::from(env!("CARGO_PKG_NAME")).to_lowercase();
+	let default_config_file_name = "conf.toml";
+	let default_config_file_path = format!(
+		"./{}/{}",
+		default_working_folder_name, default_config_file_name
 	);
-	let default_config_file_path = format!("./{}", default_config_file_name);
 	let default_exclude = format!(
-		"/^(.*(\\.git).*)|({})|(\\..+)$/i",
-		default_config_file_name.replace(".", "\\.")
+		"/^(.*(\\.git).*)|({}(/|\\)?.*)|(\\..+)$/i",
+		default_working_folder_name.replace(".", "\\.")
 	);
 	*/
 
@@ -100,7 +105,7 @@ fn main() {
 	let file_regex = regex::RegexBuilder::new(filter)
 		.case_insensitive(true)
 		.build()
-		.unwrap(); // .expect("ERROR: the filter is not regex-valid : {}", e);
+		.unwrap();
 
 	let mut images: Vec<std::path::PathBuf> = vec![];
 	for root in targets {
@@ -151,8 +156,10 @@ fn main() {
 
 	if show_debug {
 		println!();
+		/*
 		println!("DEBUG: images = {:?}", images);
 		println!();
+		*/
 		println!("DEBUG: end of searching in root targets");
 		println!();
 		println!("DEBUG: building web_view window");
@@ -160,16 +167,93 @@ fn main() {
 
 	let window_title = format!("{} V{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
 
-	let mut wv = web_view::builder()
+	struct UserData {
+		position: usize,
+		images: Vec<std::path::PathBuf>,
+	}
+	impl UserData {
+		fn set_position(&mut self, value: usize) {
+			let mut set = value;
+			if !self.images.is_empty() {
+				if value > (self.images.len() - 1) {
+					set = 0;
+				}
+			} else {
+				set = 0;
+			}
+
+			self.position = set;
+		}
+		fn previous(&mut self) {
+			if self.position < 1 {
+				if !self.images.is_empty() {
+					self.set_position(self.images.len() - 1);
+				} else {
+					self.set_position(0);
+				}
+			} else {
+				self.set_position(self.position - 1);
+			}
+		}
+		fn next(&mut self) {
+			self.set_position(self.position + 1);
+		}
+		fn random(&mut self) {
+			if !self.images.is_empty() {
+				let mut rng = rand::thread_rng();
+				self.set_position(rng.gen_range(0, self.images.len() - 1));
+			} else {
+				self.set_position(0);
+			}
+		}
+	}
+	let user_data = UserData {
+		position: 0,
+		images,
+	};
+
+	let main_window = web_view::builder()
 		.title(&window_title)
 		.content(web_view::Content::Html(include_str!("viewer.html")))
 		.size(800, 600)
 		.resizable(true)
-		.debug(true)
-		.user_data(images)
-		.invoke_handler(|_webview, arg| {
+		.debug(show_debug)
+		.user_data(user_data)
+		.invoke_handler(|webview, arg| {
 			match arg {
-				"move" => unimplemented!(),
+				"previous" => {
+					webview.user_data_mut().previous();
+
+					let js_instruction =
+						format!("set_position({});", &webview.user_data().position);
+					if show_debug {
+						println!("sending {} from previous()", js_instruction);
+					}
+					webview.eval(&js_instruction).unwrap();
+				}
+				"next" => {
+					webview.user_data_mut().next();
+
+					let js_instruction =
+						format!("set_position({});", &webview.user_data().position);
+					if show_debug {
+						println!("sending {} from next()", js_instruction);
+					}
+					webview.eval(&js_instruction).unwrap();
+				}
+				"random" => {
+					webview.user_data_mut().random();
+
+					let js_instruction =
+						format!("set_position({});", &webview.user_data().position);
+					if show_debug {
+						println!("sending {} from random()", js_instruction);
+					}
+					webview.eval(&js_instruction).unwrap();
+				}
+				"move" => {
+					println!("move instruction received");
+				}
 				_ => unimplemented!(),
 			}
 
@@ -179,28 +263,36 @@ fn main() {
 		.unwrap();
 
 	let mut images_buffer = String::from("[\"");
-	images_buffer += &wv
-		.user_data()
-		.into_iter()
-		.map(|i| i.as_path().to_str().unwrap())
-		.collect::<Vec<&str>>()
+
+	let temp = &main_window.user_data().images;
+	images_buffer += &temp
+		.iter()
+		.map(|i| String::from(dunce::canonicalize(i).unwrap().as_path().to_str().unwrap()))
+		.collect::<Vec<String>>()
 		.join("\",\"");
 	images_buffer += "\"]";
 
 	images_buffer = images_buffer.replace("\\", "\\\\");
 
+	if images_buffer == "[\"\"]" {
+		images_buffer = String::from("[]");
+	}
+
 	if show_debug {
+		// println!("DEBUG: sending images to web_view window : {}", images_buffer);
 		println!("DEBUG: sending images to web_view window");
 	}
 
-	wv.eval(&format!("set_images({});", &images_buffer))
+	let handle = main_window.handle();
+	handle
+		.dispatch(move |main_window| main_window.eval(&format!("set_images({});", &images_buffer)))
 		.unwrap();
 
 	if show_debug {
 		println!("DEBUG: running web_view window");
 	}
 
-	wv.run().unwrap();
+	main_window.run().unwrap();
 
 	if show_debug {
 		println!("DEBUG: end of program");
