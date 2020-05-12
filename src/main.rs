@@ -1,14 +1,21 @@
 // TODO : translations ?
 
 use rand::Rng;
+use serde_derive::*;
 
 fn main() {
+	let working_folder_env = format!(
+		"{}_WORKING_FOLDER",
+		String::from(env!("CARGO_PKG_NAME")).to_uppercase()
+	);
+	let mut default_working_folder_name = std::path::PathBuf::new();
+	default_working_folder_name.push(".");
+	default_working_folder_name.push(String::from(env!("CARGO_PKG_NAME")).to_lowercase());
 	/*
 	let config_env = format!(
 		"{}_CONFIG",
 		String::from(env!("CARGO_PKG_NAME")).to_uppercase()
 	);
-	let default_working_folder_name = String::from(env!("CARGO_PKG_NAME")).to_lowercase();
 	let default_config_file_name = "conf.toml";
 	let default_config_file_path = format!(
 		"./{}/{}",
@@ -23,27 +30,17 @@ fn main() {
 	let app = clap::App::new(env!("CARGO_PKG_NAME"))
 		.version(env!("CARGO_PKG_VERSION"))
 		.about(env!("CARGO_PKG_DESCRIPTION"))
-		/*
 		.arg(
-			clap::Arg::with_name("config_file_path")
-				.short("c")
-				.long("config")
-				.value_name("FILE_PATH")
-				.help("Sets the TOML configuration file path for this application")
+			clap::Arg::with_name("working_folder")
+				.short("w")
+				.long("folder")
+				.value_name("FOLDER_PATH")
+				.help("Sets the working folder path for this app (mainly where images will be copied).")
 				.takes_value(true)
 				.required(false)
-				.env(&config_env)
-				.default_value(&default_config_file_path),
+				.env(&working_folder_env)
+				.default_value(&default_working_folder_name.as_path().to_str().unwrap()),
 		)
-		.arg(
-			clap::Arg::with_name("recursive")
-				.short("r")
-				.long("recursive")
-				.help("If set, the application search other files recursively in sub-folders")
-				.takes_value(false)
-				.required(false),
-		)
-		*/
 		.arg(
 			clap::Arg::with_name("debug")
 				.short("d")
@@ -62,24 +59,43 @@ fn main() {
 				.required(false)
 				.default_value("\\.((png)|(tiff)|(tif)|(bmp)|(jpg)|(jpeg)|(gif)|(webp))$"),
 		)
-		/*
-		.arg(
-			clap::Arg::with_name("exclude")
-				.short("x")
-				.long("exclude")
-				.value_name("REGEX")
-				.help("The filter for local file name, which is a Regular Expression")
-				.takes_value(true)
-				.required(false)
-				.default_value(&default_exclude),
-		)
-		*/
 		.arg(
 			clap::Arg::with_name("TARGETS")
 				.help(r#"The folders where search for files, separated by a coma ","."#)
 				.required(false)
 				.default_value("."),
 		);
+	/*
+	.arg(
+		clap::Arg::with_name("config_file_path")
+			.short("c")
+			.long("config")
+			.value_name("FILE_PATH")
+			.help("Sets the TOML configuration file path for this application")
+			.takes_value(true)
+			.required(false)
+			.env(&config_env)
+			.default_value(&default_config_file_path),
+	)
+	.arg(
+		clap::Arg::with_name("recursive")
+			.short("r")
+			.long("recursive")
+			.help("If set, the application search other files recursively in sub-folders")
+			.takes_value(false)
+			.required(false),
+	)
+	.arg(
+		clap::Arg::with_name("exclude")
+			.short("x")
+			.long("exclude")
+			.value_name("REGEX")
+			.help("The filter for local file name, which is a Regular Expression")
+			.takes_value(true)
+			.required(false)
+			.default_value(&default_exclude),
+	)
+	*/
 
 	let matches = app.get_matches();
 
@@ -92,13 +108,31 @@ fn main() {
 		.map(|i| i.trim())
 		.collect();
 	let filter = matches.value_of("filter").unwrap();
+	let working_folder = matches.value_of("working_folder").unwrap();
+	let working_folder = std::path::Path::new(working_folder);
 
 	if show_debug {
 		println!("DEBUG: debug mode activated");
 		println!();
 		println!("DEBUG: root targets are {:?}", targets);
 		println!("DEBUG: filter regex is {:?}", filter);
+		println!("DEBUG: working folder is {:?}", working_folder);
 		println!();
+	}
+
+	if !working_folder.exists() {
+		println!(
+			"DEBUG: working folder {:?} does not exists, attempting to create it",
+			working_folder
+		);
+		println!();
+
+		std::fs::create_dir_all(working_folder).unwrap();
+	}
+
+	let working_folder = dunce::canonicalize(working_folder).unwrap();
+
+	if show_debug {
 		println!("DEBUG: starting searching in root targets");
 	}
 
@@ -220,41 +254,55 @@ fn main() {
 		.debug(show_debug)
 		.user_data(user_data)
 		.invoke_handler(|webview, arg| {
-			match arg {
-				"previous" => {
+			match serde_json::from_str(arg).unwrap() {
+				Instruction::Previous => {
 					webview.user_data_mut().previous();
 
 					let js_instruction =
 						format!("set_position({});", &webview.user_data().position);
 					if show_debug {
-						println!("sending {} from previous()", js_instruction);
+						println!("sending {} to view from previous()", js_instruction);
 					}
 					webview.eval(&js_instruction).unwrap();
 				}
-				"next" => {
+				Instruction::Next => {
 					webview.user_data_mut().next();
 
 					let js_instruction =
 						format!("set_position({});", &webview.user_data().position);
 					if show_debug {
-						println!("sending {} from next()", js_instruction);
+						println!("sending {} to view from next()", js_instruction);
 					}
 					webview.eval(&js_instruction).unwrap();
 				}
-				"random" => {
+				Instruction::Random => {
 					webview.user_data_mut().random();
 
 					let js_instruction =
 						format!("set_position({});", &webview.user_data().position);
 					if show_debug {
-						println!("sending {} from random()", js_instruction);
+						println!("sending {} to view from random()", js_instruction);
 					}
 					webview.eval(&js_instruction).unwrap();
 				}
-				"move" => {
-					println!("move instruction received");
+				Instruction::SetPosition { value } => {
+					webview.user_data_mut().set_position(value);
+
+					let js_instruction =
+						format!("set_position({});", &webview.user_data().position);
+					if show_debug {
+						println!("sending {} to view from random()", js_instruction);
+					}
+					webview.eval(&js_instruction).unwrap();
 				}
-				_ => unimplemented!(),
+				Instruction::Move { from } => {
+					println!("move instruction received for {}", from);
+				}
+				Instruction::Receiving { data } => {
+					if show_debug {
+						println!("receiving {} from view", data);
+					}
+				}
 			}
 
 			Ok(())
@@ -297,4 +345,15 @@ fn main() {
 	if show_debug {
 		println!("DEBUG: end of program");
 	}
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "instruction", rename_all = "PascalCase")]
+pub enum Instruction {
+	Previous,
+	Next,
+	Random,
+	SetPosition { value: usize },
+	Move { from: String },
+	Receiving { data: String },
 }

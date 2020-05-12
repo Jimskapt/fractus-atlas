@@ -136,6 +136,11 @@
 	<article>
 		<img src="" alt="image" id="image" />
 		<p id="no-images-error">❌ There is no images in this targets.</p>
+		<!--[if lt IE 9]>
+		<p style="position: fixed; bottom: 0; width: 100vw;">
+			(please upgrade Microsoft Internet Explorer to continue using this software)
+		</p>
+		<![endif]-->
 	</article>
 
 	<button onclick="next()" id="main_next" title="go to next image">➡</button>
@@ -143,6 +148,15 @@
 	<script>
 		let GLOBAL_POSITION = 0;
 		let GLOBAL_IMAGES = [];
+
+		function invoke(payload) {
+			const data = JSON.stringify(payload);
+			external.invoke(JSON.stringify({
+				instruction: "Receiving",
+				data: data
+			}));
+			external.invoke(data);
+		}
 
 		function set_images(value) {
 
@@ -197,23 +211,42 @@
 		}
 
 		function previous() {
-			external.invoke('previous');
+			invoke({
+				instruction: 'Previous'
+			});
 		}
 
 		function next() {
-			external.invoke('next');
+			invoke({
+				instruction: 'Next'
+			});
 		}
 
 		function random() {
-			external.invoke('random');
+			invoke({
+				instruction: 'Random'
+			});
 		}
 
 		function change_position() {
-			// set_position(document.getElementById("position_input").value);
+			let value = Number(document.getElementById("position_input").value);
+			if (value <= 0) {
+				value = 0;
+			} else {
+				value -= 1;
+			}
+
+			invoke({
+				instruction: 'SetPosition',
+				value: value
+			});
 		}
 
 		function move() {
-			external.invoke('move');
+			invoke({
+				instruction: 'Move',
+				from: document.getElementById("image").src
+			});
 		}
 
 		function set_position(value) {
