@@ -43,27 +43,21 @@
 			border-radius: 0 0 1em 1em;
 		}
 
-		header #imgpath,
-		header #progress {
-			display: block;
-		}
-
-		header #imgpath {
-			text-overflow: clip;
-			word-wrap: break-word;
-			line-height: 1em;
-			max-height: 1em;
-		}
-
 		header #progress {
 			margin: 0.5em 0;
 		}
 
-		header #progress input#position_input {
+		header input {
 			background: none;
 			border: 0;
 			width: 5em;
 			text-align: right;
+		}
+
+		header #imgpath {
+			width: 100%;
+			text-align: center;
+			display: block;
 		}
 
 		header button {
@@ -114,6 +108,68 @@
 			padding: 1em;
 			border-radius: 1em;
 		}
+
+		#move_window {
+			display: none;
+			z-index: 20;
+			background: rgba(0, 0, 0, 0.8);
+			color: white;
+			/*
+			width: 100vw;
+			height: 100vh;
+			*/
+			position: absolute;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			left: 0;
+			padding: 2em;
+		}
+
+		#move_window #inner_window {
+			border: 1px solid white;
+			padding: 2em;
+			border-radius: 2em;
+		}
+
+		#move_window input[type="search"] {
+			background: grey;
+			color: white;
+			width: 100%;
+			border: none;
+			padding: 0.5em;
+		}
+
+		#move_window #move_actions {
+			text-align: center;
+		}
+
+		#move_window #move_search_results {
+			padding: 0.5em 0;
+		}
+
+		#move_window #move_actions button {
+			margin: 1em;
+			color: white;
+			min-width: 40%;
+			min-height: 6em;
+			border: none;
+			cursor: pointer;
+		}
+
+		#move_window #move_actions button#move_abort {
+			background: crimson;
+		}
+		#move_window #move_actions button#move_abort:hover {
+			background: red;
+		}
+
+		#move_window #move_actions button#move_ok {
+			background: darkolivegreen;
+		}
+		#move_window #move_actions button#move_ok:hover {
+			background: green;
+		}
 	</style>
 
 </head>
@@ -121,12 +177,12 @@
 <body>
 
 	<header>
-		<span id="imgpath"></span>
+		<input type="text" readonly="readonly" id="imgpath" />
 		<span id="progress">
 			<button onclick="previous()" title="go to previous image">⬅</button>
 			<input type="number" id="position_input" onchange="change_position()" /> / <span id="max_counter"></span>
 			<button onclick="random()" title="go to random image">🔀</button>
-			<button onclick="move()" title="move this image">🚚</button>
+			<button onclick="toggle_move_window()" title="move this image">🚚</button>
 			<button onclick="next()" title="go to next image">➡</button>
 		</span>
 	</header>
@@ -145,9 +201,36 @@
 
 	<button onclick="next()" id="main_next" title="go to next image">➡</button>
 
+	<div id="move_window">
+		<div id="inner_window">
+			<input type="search" id="move_search" />
+			<div id="move_search_results"></div>
+			<div id="move_actions">
+				<button onclick="toggle_move_window()" id="move_abort">❌ Abort</button>
+				<button onclick="move()" id="move_ok">🚚 Move</button>
+			</div>
+		</div>
+	</div>
+
 	<script>
+	if (!String.prototype.includes) {
+		String.prototype.includes = function(search, start) {
+			'use strict';
+
+			if (search instanceof RegExp) {
+			throw TypeError('first argument must not be a RegExp');
+			} 
+			if (start === undefined) { start = 0; }
+			return this.indexOf(search, start) !== -1;
+		};
+	}
+	</script>
+
+	<script>
+		let GLOBAL_MODE = 'browse';
 		let GLOBAL_POSITION = 0;
 		let GLOBAL_IMAGES = [];
+		let GLOBAL_FOLDERS = [];
 
 		function invoke(payload) {
 			const data = JSON.stringify(payload);
@@ -170,6 +253,13 @@
 
 		}
 
+		function set_folders(value) {
+
+			GLOBAL_FOLDERS = value;
+			refresh_folders_result(document.getElementById('move_search').value);
+
+		}
+
 		function refresh_image() {
 
 			if (GLOBAL_IMAGES.length > 0) {
@@ -185,7 +275,7 @@
 				document.getElementById("no-images-error").style.display = "none";
 
 				document.getElementById("image").src = "file:///" + GLOBAL_IMAGES[GLOBAL_POSITION];
-				document.getElementById("imgpath").innerHTML = GLOBAL_IMAGES[GLOBAL_POSITION];
+				document.getElementById("imgpath").value = GLOBAL_IMAGES[GLOBAL_POSITION];
 				document.getElementById("position_input").value = GLOBAL_POSITION + 1;
 				document.getElementById("max_counter").innerHTML = GLOBAL_IMAGES.length;
 
@@ -202,7 +292,7 @@
 				document.getElementById("no-images-error").style.display = "block";
 
 				document.getElementById("image").src = "";
-				document.getElementById("imgpath").innerHTML = "";
+				document.getElementById("imgpath").value = "";
 				document.getElementById("position_input").value = 0;
 				document.getElementById("max_counter").innerHTML = 0;
 
@@ -242,10 +332,28 @@
 			});
 		}
 
+		function toggle_move_window() {
+			// console.log('toggle_move_window', GLOBAL_MODE);
+
+			if (GLOBAL_MODE === 'move') {
+				GLOBAL_MODE = 'browse';
+
+				document.getElementById('move_window').style.display = 'none';
+
+				document.getElementById('move_search').blur();
+			} else { // if (GLOBAL_IMAGES.length > 0) {
+				GLOBAL_MODE = 'move';
+
+				document.getElementById('move_window').style.display = 'block';
+
+				document.getElementById('move_search').focus();
+			}
+		}
+
 		function move() {
 			invoke({
 				instruction: 'Move',
-				from: document.getElementById("image").src
+				into: "here_is_the_subfolder"
 			});
 		}
 
@@ -257,15 +365,58 @@
 
 		document.addEventListener("keyup", function (event) {
 			// console.log(event);
-			if (event.keyCode === 39) { // right
-				next();
-			} else if (event.keyCode === 37) { // left
-				previous();
-			} else if (event.key.toLowerCase() === "z") {
-				random();
-			} else if (event.key.toLowerCase() === "m") {
-				move();
+			if (GLOBAL_MODE === 'move') {
+				if (event.keyCode === 27) { // echap
+					toggle_move_window();
+				}
+			} else {
+				if (event.keyCode === 39) { // right
+					next();
+				} else if (event.keyCode === 37) { // left
+					previous();
+				} else if (event.key.toLowerCase() === "z") {
+					random();
+				} else if (event.key.toLowerCase() === "m") {
+					toggle_move_window();
+				}
 			}
+		});
+
+		function refresh_folders_result(value) {
+			let found = 0;
+			let search_items = "";
+
+			for (let i = 0; i < GLOBAL_FOLDERS.length; i++) {
+				let folder = GLOBAL_FOLDERS[i];
+
+				if (value.trim() === "" || folder.trim().toLowerCase().includes(value.trim().toLowerCase())) {
+					search_items += '<label><input type="radio" name="selected_folder" value="' + folder + '" /> ' + folder + '</label><br>';
+					found++;
+				}
+			}
+
+			if (found === 0) {
+				search_items += '<label><input type="radio" name="selected_folder" value="' + value + '" /> ' + value + '</label><br>';
+				found++;
+			}
+
+			document.getElementById('move_search_results').innerHTML = search_items;
+
+			setTimeout(function() {
+				if (found === 1) {
+					let el = document.querySelector('input[name="selected_folder"]');
+					
+					if (el !== undefined && el !== null) {
+						el.checked = true;
+					}
+				}
+			}, 100);
+		}
+
+		document.getElementById('move_search').addEventListener("keyup", function (event) {
+
+			refresh_folders_result(event.target.value);
+
 		});
 
 		document.addEventListener("DOMContentLoaded", function () {

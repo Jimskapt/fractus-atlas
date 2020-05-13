@@ -1,4 +1,5 @@
 // TODO : translations ?
+// TODO : better error handling (search for `unwrap`)
 
 use rand::Rng;
 use serde_derive::*;
@@ -57,7 +58,7 @@ fn main() {
 				.help("Exclude paths which match with this Regular Expression. The match is case insensitive, to the moment.")
 				.takes_value(true)
 				.required(false)
-				.default_value("\\.((png)|(tiff)|(tif)|(bmp)|(jpg)|(jpeg)|(gif)|(webp))$"),
+				.default_value("\\.((png)|(tiff)|(tif)|(bmp)|(jpg)|(jpeg)|(gif)|(jfif))$"),
 		)
 		.arg(
 			clap::Arg::with_name("TARGETS")
@@ -141,14 +142,21 @@ fn main() {
 		.build()
 		.unwrap();
 
-	let mut images: Vec<std::path::PathBuf> = vec![];
+	let mut images: Vec<Image> = vec![];
 	for root in targets {
-		let mut temp: Vec<std::path::PathBuf> = std::fs::read_dir(root)
+		let mut temp: Vec<Image> = std::fs::read_dir(root)
 			.unwrap()
-			.map(|i| i.unwrap().path())
+			.map(|i| {
+				let path = dunce::canonicalize(i.unwrap().path()).unwrap();
+
+				Image {
+					current: path.clone(),
+					origin: path.clone()
+				}
+			})
 			.filter(|i| {
-				if i.as_path().is_file() {
-					if let Some(name) = i.file_name() {
+				if i.origin.is_file() {
+					if let Some(name) = i.origin.file_name() {
 						match name.to_str() {
 							Some(file_name) => {
 								if file_regex.is_match(file_name) {
@@ -172,13 +180,13 @@ fn main() {
 						}
 					} else {
 						if show_debug {
-							println!("DEBUG: can not get file name of {:?}", i);
+							println!("DEBUG: can not get file name of {:?}", i.origin);
 						}
 						return false;
 					}
 				} else {
 					if show_debug {
-						println!("DEBUG: {:?} is not a file", i);
+						println!("DEBUG: {:?} is not a file", i.origin);
 					}
 					return false;
 				}
@@ -201,9 +209,14 @@ fn main() {
 
 	let window_title = format!("{} V{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
 
+	#[derive(Clone)]
+	struct Image {
+		origin: std::path::PathBuf,
+		current: std::path::PathBuf,
+	}
 	struct UserData {
 		position: usize,
-		images: Vec<std::path::PathBuf>,
+		images: Vec<Image>,
 	}
 	impl UserData {
 		fn set_position(&mut self, value: usize) {
@@ -295,8 +308,16 @@ fn main() {
 					}
 					webview.eval(&js_instruction).unwrap();
 				}
-				Instruction::Move { from } => {
-					println!("move instruction received for {}", from);
+				Instruction::Move { into } => {
+					let image = webview.user_data().images.get(webview.user_data().position).unwrap();
+
+					let mut new_path = working_folder.clone();
+					new_path.push(into);
+					new_path.push(image.current.as_path().file_name().unwrap());
+
+					std::fs::create_dir_all(new_path.parent().unwrap()).unwrap();
+
+					std::fs::copy(&image.current, &new_path).unwrap();
 				}
 				Instruction::Receiving { data } => {
 					if show_debug {
@@ -312,10 +333,16 @@ fn main() {
 
 	let mut images_buffer = String::from("[\"");
 
-	let temp = &main_window.user_data().images;
+	let mut temp = main_window.user_data().images.clone();
+	temp.sort_by(|a, b| {
+		let b_time = b.current.metadata().unwrap().modified().unwrap_or(std::time::SystemTime::now());
+		let a_time = a.current.metadata().unwrap().modified().unwrap_or(std::time::SystemTime::now());
+		
+		return b_time.cmp(&a_time);
+	});
 	images_buffer += &temp
 		.iter()
-		.map(|i| String::from(dunce::canonicalize(i).unwrap().as_path().to_str().unwrap()))
+		.map(|i| String::from(i.origin.to_str().unwrap()))
 		.collect::<Vec<String>>()
 		.join("\",\"");
 	images_buffer += "\"]";
@@ -326,6 +353,17 @@ fn main() {
 		images_buffer = String::from("[]");
 	}
 
+	let mut folders: Vec<String> = vec![];
+	for entry in std::fs::read_dir(&working_folder).unwrap() {
+		let path = entry.unwrap().path();
+		if path.is_dir() {
+			folders.push(String::from(path.file_name().unwrap().to_str().unwrap()));
+		}
+	}
+	let mut folders_buffer = String::from("[\"");
+	folders_buffer += &folders.join("\",\"");
+	folders_buffer += "\"]";
+
 	if show_debug {
 		// println!("DEBUG: sending images to web_view window : {}", images_buffer);
 		println!("DEBUG: sending images to web_view window");
@@ -333,7 +371,12 @@ fn main() {
 
 	let handle = main_window.handle();
 	handle
-		.dispatch(move |main_window| main_window.eval(&format!("set_images({});", &images_buffer)))
+		.dispatch(move |main_window| {
+			main_window.eval(&format!("set_images({});", &images_buffer)).unwrap();
+			main_window.eval(&format!("set_folders({});", &folders_buffer)).unwrap();
+
+			Ok(())
+		})
 		.unwrap();
 
 	if show_debug {
@@ -354,6 +397,6 @@ pub enum Instruction {
 	Next,
 	Random,
 	SetPosition { value: usize },
-	Move { from: String },
+	Move { into: String },
 	Receiving { data: String },
 }
