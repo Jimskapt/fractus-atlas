@@ -114,10 +114,6 @@
 			z-index: 20;
 			background: rgba(0, 0, 0, 0.8);
 			color: white;
-			/*
-			width: 100vw;
-			height: 100vh;
-			*/
 			position: absolute;
 			top: 0;
 			right: 0;
@@ -144,10 +140,6 @@
 			text-align: center;
 		}
 
-		#move_window #move_search_results {
-			padding: 0.5em 0;
-		}
-
 		#move_window #move_actions button {
 			margin: 1em;
 			color: white;
@@ -160,6 +152,7 @@
 		#move_window #move_actions button#move_abort {
 			background: crimson;
 		}
+
 		#move_window #move_actions button#move_abort:hover {
 			background: red;
 		}
@@ -167,7 +160,12 @@
 		#move_window #move_actions button#move_ok {
 			background: darkolivegreen;
 		}
-		#move_window #move_actions button#move_ok:hover {
+
+		#move_window #move_actions button#move_ok:disabled {
+			background: grey;
+		}
+
+		#move_window #move_actions button#move_ok:not(:disabled):hover {
 			background: green;
 		}
 	</style>
@@ -204,6 +202,7 @@
 	<div id="move_window">
 		<div id="inner_window">
 			<input type="search" id="move_search" />
+			<p>Move current image in selected folder :</p>
 			<div id="move_search_results"></div>
 			<div id="move_actions">
 				<button onclick="toggle_move_window()" id="move_abort">❌ Abort</button>
@@ -213,17 +212,19 @@
 	</div>
 
 	<script>
-	if (!String.prototype.includes) {
-		String.prototype.includes = function(search, start) {
-			'use strict';
+		if (!String.prototype.includes) {
+			String.prototype.includes = function (search, start) {
+				'use strict';
 
-			if (search instanceof RegExp) {
-			throw TypeError('first argument must not be a RegExp');
-			} 
-			if (start === undefined) { start = 0; }
-			return this.indexOf(search, start) !== -1;
-		};
-	}
+				if (search instanceof RegExp) {
+					throw TypeError('first argument must not be a RegExp');
+				}
+				if (start === undefined) {
+					start = 0;
+				}
+				return this.indexOf(search, start) !== -1;
+			};
+		}
 	</script>
 
 	<script>
@@ -231,6 +232,7 @@
 		let GLOBAL_POSITION = 0;
 		let GLOBAL_IMAGES = [];
 		let GLOBAL_FOLDERS = [];
+		let GLOBAL_SELECTED_FOLDER = "";
 
 		function invoke(payload) {
 			const data = JSON.stringify(payload);
@@ -251,6 +253,10 @@
 
 			refresh_image();
 
+		}
+
+		function new_current(value) {
+			GLOBAL_IMAGES[GLOBAL_POSITION] = value;
 		}
 
 		function set_folders(value) {
@@ -333,7 +339,6 @@
 		}
 
 		function toggle_move_window() {
-			// console.log('toggle_move_window', GLOBAL_MODE);
 
 			if (GLOBAL_MODE === 'move') {
 				GLOBAL_MODE = 'browse';
@@ -341,20 +346,27 @@
 				document.getElementById('move_window').style.display = 'none';
 
 				document.getElementById('move_search').blur();
-			} else { // if (GLOBAL_IMAGES.length > 0) {
+
+			} else if (GLOBAL_IMAGES.length > 0) {
 				GLOBAL_MODE = 'move';
 
 				document.getElementById('move_window').style.display = 'block';
 
 				document.getElementById('move_search').focus();
+				document.getElementById('move_search').setSelectionRange(0, document.getElementById('move_search').value.length);
+
+				document.getElementById('move_search').focus();
+
 			}
 		}
 
 		function move() {
-			invoke({
-				instruction: 'Move',
-				into: "here_is_the_subfolder"
-			});
+			if (GLOBAL_SELECTED_FOLDER.trim() !== "") {
+				invoke({
+					instruction: 'Move',
+					into: GLOBAL_SELECTED_FOLDER
+				});
+			}
 		}
 
 		function set_position(value) {
@@ -365,6 +377,7 @@
 
 		document.addEventListener("keyup", function (event) {
 			// console.log(event);
+
 			if (GLOBAL_MODE === 'move') {
 				if (event.keyCode === 27) { // echap
 					toggle_move_window();
@@ -385,37 +398,115 @@
 		function refresh_folders_result(value) {
 			let found = 0;
 			let search_items = "";
+			let selected_is_inside = false;
 
 			for (let i = 0; i < GLOBAL_FOLDERS.length; i++) {
 				let folder = GLOBAL_FOLDERS[i];
 
 				if (value.trim() === "" || folder.trim().toLowerCase().includes(value.trim().toLowerCase())) {
-					search_items += '<label><input type="radio" name="selected_folder" value="' + folder + '" /> ' + folder + '</label><br>';
+					search_items += '<label><input type="radio" name="selected_folder"';
+
+					if (folder === GLOBAL_SELECTED_FOLDER) {
+						search_items += " checked";
+						selected_is_inside = true;
+					}
+
+					search_items += ' value="' + folder + '" /> ' + folder + '</label><br>';
 					found++;
 				}
 			}
 
-			if (found === 0) {
-				search_items += '<label><input type="radio" name="selected_folder" value="' + value + '" /> ' + value + '</label><br>';
+			if (!selected_is_inside && GLOBAL_FOLDERS.length > 0) {
+				GLOBAL_SELECTED_FOLDER = GLOBAL_FOLDERS[0];
+			}
+
+			if (value.trim() !== "" && found <= 0) {
+				search_items += '<label><input type="radio" name="selected_folder" value="' + value + '" /> ' + value +
+					'</label><br>';
 				found++;
+
+				GLOBAL_SELECTED_FOLDER = value;
+			}
+
+			if (found <= 0) {
+				document.getElementById('move_ok').disabled = true;
+			} else {
+				document.getElementById('move_ok').disabled = false;
 			}
 
 			document.getElementById('move_search_results').innerHTML = search_items;
 
-			setTimeout(function() {
-				if (found === 1) {
-					let el = document.querySelector('input[name="selected_folder"]');
-					
-					if (el !== undefined && el !== null) {
-						el.checked = true;
-					}
+			setTimeout(function () {
+				let el = document.querySelector('input[name="selected_folder"]');
+
+				if (el !== undefined && el !== null) {
+					el.checked = true;
+				}
+			}, 200);
+
+			setTimeout(function () {
+				let elements = document.querySelectorAll('input[name="selected_folder"]');
+
+				for (let i = 0; i < elements.length; i++) {
+					let el = elements[i];
+
+					el.addEventListener('change', function () {
+						GLOBAL_SELECTED_FOLDER = el.value;
+					});
 				}
 			}, 100);
 		}
 
-		document.getElementById('move_search').addEventListener("keyup", function (event) {
+		refresh_folders_result("");
 
-			refresh_folders_result(event.target.value);
+		document.getElementById('move_search').addEventListener("keyup", function (event) {
+			// console.log(event);
+
+			if (event.keyCode === 38) { // UP
+				let nodes = document.querySelectorAll('input[name="selected_folder"]');
+				let activate_previous = false;
+				for (let i = nodes.length - 1; i >= 0; i--) {
+					let node = nodes[i];
+
+					if (node.checked && i > 0) {
+						node.checked = false;
+						activate_previous = true;
+
+						continue;
+					}
+
+					if (activate_previous) {
+						node.checked = true;
+						activate_next = false;
+						GLOBAL_SELECTED_FOLDER = node.value;
+						break;
+					}
+				}
+			} else if (event.keyCode === 40) { // DOWN
+				let nodes = document.querySelectorAll('input[name="selected_folder"]');
+				let activate_next = false;
+				for (let i = 0; i < nodes.length; i++) {
+					let node = nodes[i];
+
+					if (node.checked && i < (nodes.length - 1)) {
+						node.checked = false;
+						activate_next = true;
+
+						continue;
+					}
+
+					if (activate_next) {
+						node.checked = true;
+						activate_next = false;
+						GLOBAL_SELECTED_FOLDER = node.value;
+						break;
+					}
+				}
+			} else if (event.keyCode === 13) { // ENTER
+				move();
+			} else {
+				refresh_folders_result(event.target.value);
+			}
 
 		});
 

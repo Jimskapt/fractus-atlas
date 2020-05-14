@@ -65,9 +65,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.52"
+version = "1.0.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3d87b23d6a92cd03af510a5ade527033f6aa6fa92161e2d5863a907d4c5e31d"
+checksum = "404b1fe4f65288577753b17e3b36a04596ee784493ec249bf81c7f2d2acd751c"
 
 [[package]]
 name = "cfg-if"
@@ -107,6 +107,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
+ "trash",
  "web-view",
 ]
 
@@ -435,6 +436,15 @@ checksum = "848eb50d6d21430349d82418c2244f611b1ad3e1c52c675320338b3102d06554"
 dependencies = [
  "cc",
  "libc",
+]
+
+[[package]]
+name = "trash"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2f24d31505f49e989b1ee2c03c323251f6763d5907d471b71192dac92e323f8"
+dependencies = [
+ "winapi",
 ]
 
 [[package]]

@@ -1,6 +1,7 @@
 // TODO : translations ?
 // TODO : better error handling (search for `unwrap`)
 
+use rand::seq::IteratorRandom;
 use rand::Rng;
 use serde_derive::*;
 
@@ -61,6 +62,17 @@ fn main() {
 				.default_value("\\.((png)|(tiff)|(tif)|(bmp)|(jpg)|(jpeg)|(gif)|(jfif))$"),
 		)
 		.arg(
+			clap::Arg::with_name("sort")
+				.short("s")
+				.long("sort")
+				.takes_value(true)
+				.possible_values(&["name", "modified"])
+				.value_name("order")
+				.help("Sort images by name or by edit date")
+				.required(false)
+				.default_value("modified"),
+		)
+		.arg(
 			clap::Arg::with_name("TARGETS")
 				.help(r#"The folders where search for files, separated by a coma ","."#)
 				.required(false)
@@ -110,6 +122,7 @@ fn main() {
 		.collect();
 	let filter = matches.value_of("filter").unwrap();
 	let working_folder = matches.value_of("working_folder").unwrap();
+	let sort_order = matches.value_of("sort").unwrap();
 	let working_folder = std::path::Path::new(working_folder);
 
 	if show_debug {
@@ -118,6 +131,7 @@ fn main() {
 		println!("DEBUG: root targets are {:?}", targets);
 		println!("DEBUG: filter regex is {:?}", filter);
 		println!("DEBUG: working folder is {:?}", working_folder);
+		println!("DEBUG: sorting files by {:?}", sort_order);
 		println!();
 	}
 
@@ -149,14 +163,11 @@ fn main() {
 			.map(|i| {
 				let path = dunce::canonicalize(i.unwrap().path()).unwrap();
 
-				Image {
-					current: path.clone(),
-					origin: path.clone()
-				}
+				Image { current: path }
 			})
 			.filter(|i| {
-				if i.origin.is_file() {
-					if let Some(name) = i.origin.file_name() {
+				if i.current.is_file() {
+					if let Some(name) = i.current.file_name() {
 						match name.to_str() {
 							Some(file_name) => {
 								if file_regex.is_match(file_name) {
@@ -180,13 +191,13 @@ fn main() {
 						}
 					} else {
 						if show_debug {
-							println!("DEBUG: can not get file name of {:?}", i.origin);
+							println!("DEBUG: can not get file name of {:?}", i.current);
 						}
 						return false;
 					}
 				} else {
 					if show_debug {
-						println!("DEBUG: {:?} is not a file", i.origin);
+						println!("DEBUG: {:?} is not a file", i.current);
 					}
 					return false;
 				}
@@ -194,6 +205,25 @@ fn main() {
 			.collect();
 
 		images.append(&mut temp);
+	}
+
+	if sort_order == "modified" {
+		images.sort_by(|a, b| {
+			let b_time = b
+				.current
+				.metadata()
+				.unwrap()
+				.modified()
+				.unwrap_or_else(|_| std::time::SystemTime::now());
+			let a_time = a
+				.current
+				.metadata()
+				.unwrap()
+				.modified()
+				.unwrap_or_else(|_| std::time::SystemTime::now());
+
+			return b_time.cmp(&a_time);
+		});
 	}
 
 	if show_debug {
@@ -211,7 +241,6 @@ fn main() {
 
 	#[derive(Clone)]
 	struct Image {
-		origin: std::path::PathBuf,
 		current: std::path::PathBuf,
 	}
 	struct UserData {
@@ -309,15 +338,77 @@ fn main() {
 					webview.eval(&js_instruction).unwrap();
 				}
 				Instruction::Move { into } => {
-					let image = webview.user_data().images.get(webview.user_data().position).unwrap();
+					let image = webview
+						.user_data()
+						.images
+						.get(webview.user_data().position)
+						.unwrap();
 
 					let mut new_path = working_folder.clone();
 					new_path.push(into);
-					new_path.push(image.current.as_path().file_name().unwrap());
+
+					let mut new_name = String::from(
+						image
+							.current
+							.as_path()
+							.file_stem()
+							.unwrap()
+							.to_str()
+							.unwrap(),
+					);
+					new_name += "-fa_";
+
+					let mut rng_limit = rand::thread_rng();
+					let alphabet = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+					for _ in 1..rng_limit.gen_range(6, 12) {
+						let mut rng_item = rand::thread_rng();
+						new_name.push(alphabet.chars().choose(&mut rng_item).unwrap());
+					}
+
+					new_name += ".";
+					new_name += image
+						.current
+						.as_path()
+						.extension()
+						.unwrap()
+						.to_str()
+						.unwrap();
+
+					new_path.push(new_name);
 
 					std::fs::create_dir_all(new_path.parent().unwrap()).unwrap();
 
 					std::fs::copy(&image.current, &new_path).unwrap();
+					trash::remove(&image.current).unwrap();
+
+					webview
+						.eval(&format!(
+							"new_current(\"{}\");",
+							&new_path.as_path().to_str().unwrap().replace("\\", "\\\\")
+						))
+						.unwrap();
+					webview.eval("next();").unwrap();
+					webview.eval("toggle_move_window();").unwrap();
+
+					// TODO : following is duplicate :
+					let mut folders: Vec<String> = vec![];
+					for entry in std::fs::read_dir(&working_folder).unwrap() {
+						let path = entry.unwrap().path();
+						if path.is_dir() {
+							folders.push(String::from(path.file_name().unwrap().to_str().unwrap()));
+						}
+					}
+					let mut folders_buffer = String::from("[\"");
+					folders_buffer += &folders.join("\",\"");
+					folders_buffer += "\"]";
+
+					if folders_buffer == "[\"\"]" {
+						folders_buffer = String::from("[]");
+					}
+
+					webview
+						.eval(&format!("set_folders({});", &folders_buffer))
+						.unwrap();
 				}
 				Instruction::Receiving { data } => {
 					if show_debug {
@@ -333,16 +424,10 @@ fn main() {
 
 	let mut images_buffer = String::from("[\"");
 
-	let mut temp = main_window.user_data().images.clone();
-	temp.sort_by(|a, b| {
-		let b_time = b.current.metadata().unwrap().modified().unwrap_or(std::time::SystemTime::now());
-		let a_time = a.current.metadata().unwrap().modified().unwrap_or(std::time::SystemTime::now());
-		
-		return b_time.cmp(&a_time);
-	});
+	let temp = main_window.user_data().images.clone();
 	images_buffer += &temp
 		.iter()
-		.map(|i| String::from(i.origin.to_str().unwrap()))
+		.map(|i| String::from(i.current.to_str().unwrap()))
 		.collect::<Vec<String>>()
 		.join("\",\"");
 	images_buffer += "\"]";
@@ -364,6 +449,10 @@ fn main() {
 	folders_buffer += &folders.join("\",\"");
 	folders_buffer += "\"]";
 
+	if folders_buffer == "[\"\"]" {
+		folders_buffer = String::from("[]");
+	}
+
 	if show_debug {
 		// println!("DEBUG: sending images to web_view window : {}", images_buffer);
 		println!("DEBUG: sending images to web_view window");
@@ -372,8 +461,12 @@ fn main() {
 	let handle = main_window.handle();
 	handle
 		.dispatch(move |main_window| {
-			main_window.eval(&format!("set_images({});", &images_buffer)).unwrap();
-			main_window.eval(&format!("set_folders({});", &folders_buffer)).unwrap();
+			main_window
+				.eval(&format!("set_images({});", &images_buffer))
+				.unwrap();
+			main_window
+				.eval(&format!("set_folders({});", &folders_buffer))
+				.unwrap();
 
 			Ok(())
 		})
