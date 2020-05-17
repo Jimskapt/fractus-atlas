@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>fractus-atlas</title>
+
+	<link rel="stylesheet" href="./main.css">
+
+</head>
+
+<body>
+
+	<header>
+		<input type="text" readonly="readonly" id="imgpath" />
+		<span id="progress">
+			<button onclick="previous()" title="go to previous image">⬅</button>
+			<input type="number" id="position_input" onchange="change_position()" /> / <span id="max_counter"></span>
+			<button onclick="random()" title="go to random image">🔀</button>
+			<button onclick="toggle_move_window()" title="move this image">🚚</button>
+			<button onclick="next()" title="go to next image">➡</button>
+		</span>
+	</header>
+
+	<button onclick="previous()" id="main_previous" title="go to previous image">⬅</button>
+
+	<article>
+		<img src="" alt="image" id="image" />
+		<p id="no-images-error">❌ There is no images in this targets.</p>
+		<!--[if lt IE 9]>
+		<p style="position: fixed; bottom: 0; width: 100vw;">
+			(please upgrade Microsoft Internet Explorer to continue using this software)
+		</p>
+		<![endif]-->
+	</article>
+
+	<button onclick="next()" id="main_next" title="go to next image">➡</button>
+
+	<div id="move_window">
+		<div id="inner_window">
+			<input type="search" id="move_search" />
+			<p>Move current image in selected folder :</p>
+			<div id="move_search_results"></div>
+			<div id="move_actions">
+				<button onclick="toggle_move_window()" id="move_abort">❌ Abort</button>
+				<button onclick="move()" id="move_ok">🚚 Move</button>
+			</div>
+			<p id="confirmation-move"></p>
+		</div>
+	</div>
+
+	<script src="./main.js"></script>
+
+</body>
+
+</html>

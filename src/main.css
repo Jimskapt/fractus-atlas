@@ -1,0 +1,162 @@
+/* this file will be included in main.html */
+
+html,
+body {
+	padding: 0;
+	margin: 0;
+}
+
+body {
+	background-color: grey;
+	overflow: hidden;
+}
+
+header,
+button#main_previous,
+button#main_next {
+	position: fixed;
+	top: 0;
+	opacity: 0.3;
+	background-color: grey;
+}
+
+header:not(:disabled):hover,
+button#main_previous:not(:disabled):hover,
+button#main_next:not(:disabled):hover {
+	opacity: 0.9;
+}
+
+header {
+	padding: 0.5em 1em;
+	z-index: 10;
+	text-align: center;
+	right: 15%;
+	width: 70%;
+	border-radius: 0 0 1em 1em;
+}
+
+header #progress {
+	margin: 0.5em 0;
+}
+
+header input {
+	background: none;
+	border: 0;
+	width: 5em;
+	text-align: right;
+}
+
+header #imgpath {
+	width: 100%;
+	text-align: center;
+	display: block;
+}
+
+header button {
+	cursor: pointer;
+	border: none;
+	background: none;
+}
+
+article {
+	width: 100%;
+	text-align: center;
+	vertical-align: middle;
+}
+
+button#main_previous,
+button#main_next {
+	height: 100%;
+	border: 0;
+	font-size: xx-large;
+	z-index: 5;
+	cursor: pointer;
+}
+
+button#main_previous {
+	left: 0;
+}
+
+button#main_next {
+	right: 0;
+}
+
+img#image {
+	max-width: 100vw;
+	max-height: 100vh;
+	margin: auto;
+	display: none;
+}
+
+article #no-images-error {
+	display: block;
+	position: fixed;
+	top: 50%;
+	right: 20%;
+	left: 20%;
+	background: pink;
+	color: red;
+	border: 1px solid red;
+	padding: 1em;
+	border-radius: 1em;
+}
+
+#move_window {
+	display: none;
+	z-index: 20;
+	background: rgba(0, 0, 0, 0.8);
+	color: white;
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	padding: 2em;
+}
+
+#move_window #inner_window {
+	border: 1px solid white;
+	padding: 2em;
+	border-radius: 2em;
+}
+
+#move_window input[type="search"] {
+	background: grey;
+	color: white;
+	width: 100%;
+	border: none;
+	padding: 0.5em;
+}
+
+#move_window #move_actions {
+	text-align: center;
+}
+
+#move_window #move_actions button {
+	margin: 1em;
+	color: white;
+	min-width: 40%;
+	min-height: 6em;
+	border: none;
+	cursor: pointer;
+}
+
+#move_window #move_actions button#move_abort {
+	background: crimson;
+}
+
+#move_window #move_actions button#move_abort:hover {
+	background: red;
+}
+
+#move_window #move_actions button#move_ok {
+	background: darkolivegreen;
+}
+
+#move_window #move_actions button#move_ok:disabled {
+	background: grey;
+}
+
+#move_window #move_actions button#move_ok:not(:disabled):hover {
+	background: green;
+}

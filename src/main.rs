@@ -91,6 +91,16 @@ fn main() {
 			.default_value(&default_config_file_path),
 	)
 	.arg(
+		clap::Arg::with_name("move-mode")
+			.short("m")
+			.long("mode")
+			.takes_value(true)
+			.possible_values(&["move", "copy"])
+			.help("Sets if the `move` instruction will move the file or copy it")
+			.required(false)
+			.default_value("move"),
+	)
+	.arg(
 		clap::Arg::with_name("recursive")
 			.short("r")
 			.long("recursive")
@@ -288,9 +298,22 @@ fn main() {
 		images,
 	};
 
+	let html = include_str!("main.html")
+		.replace(
+			r#"<script src="./main.js"></script>"#,
+			&format!("<script>{}</script>", include_str!("main.js")),
+		)
+		.replace(
+			r#"<link rel="stylesheet" href="./main.css">"#,
+			&format!(
+				"<style type=\"text/css\">{}</style>",
+				include_str!("main.css")
+			),
+		);
+
 	let main_window = web_view::builder()
 		.title(&window_title)
-		.content(web_view::Content::Html(include_str!("viewer.html")))
+		.content(web_view::Content::Html(&html))
 		.size(800, 600)
 		.resizable(true)
 		.debug(show_debug)
@@ -338,54 +361,72 @@ fn main() {
 					webview.eval(&js_instruction).unwrap();
 				}
 				Instruction::Move { into } => {
-					let image = webview
-						.user_data()
-						.images
-						.get(webview.user_data().position)
-						.unwrap();
+					let udata = webview.user_data_mut();
+					let image = udata.images.get(udata.position).unwrap();
 
 					let mut new_path = working_folder.clone();
-					new_path.push(into);
+					new_path.push(&into);
+					new_path.push(image.current.as_path().file_name().unwrap());
 
-					let mut new_name = String::from(
-						image
+					while new_path.exists() {
+						new_path = working_folder.clone();
+						new_path.push(&into);
+
+						let mut new_name = String::from(
+							image
+								.current
+								.as_path()
+								.file_stem()
+								.unwrap()
+								.to_str()
+								.unwrap(),
+						);
+						new_name += "-fa_";
+
+						let mut rng_limit = rand::thread_rng();
+						let alphabet =
+							"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+						for _ in 1..rng_limit.gen_range(6, 12) {
+							let mut rng_item = rand::thread_rng();
+							new_name.push(alphabet.chars().choose(&mut rng_item).unwrap());
+						}
+
+						new_name += ".";
+						new_name += image
 							.current
 							.as_path()
-							.file_stem()
+							.extension()
 							.unwrap()
 							.to_str()
-							.unwrap(),
-					);
-					new_name += "-fa_";
+							.unwrap();
 
-					let mut rng_limit = rand::thread_rng();
-					let alphabet = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-					for _ in 1..rng_limit.gen_range(6, 12) {
-						let mut rng_item = rand::thread_rng();
-						new_name.push(alphabet.chars().choose(&mut rng_item).unwrap());
+						new_path.push(new_name);
 					}
 
-					new_name += ".";
-					new_name += image
-						.current
-						.as_path()
-						.extension()
-						.unwrap()
-						.to_str()
-						.unwrap();
-
-					new_path.push(new_name);
+					if show_debug {
+						println!(
+							"DEBUG: attempting to move {} in {}",
+							&image.current.as_path().to_str().unwrap(),
+							&new_path.as_path().to_str().unwrap()
+						);
+					}
 
 					std::fs::create_dir_all(new_path.parent().unwrap()).unwrap();
 
 					std::fs::copy(&image.current, &new_path).unwrap();
 					trash::remove(&image.current).unwrap();
 
+					let temp = new_path
+						.clone()
+						.as_path()
+						.to_str()
+						.unwrap()
+						.replace("\\", "\\\\");
+
+					udata.images[udata.position].current = new_path;
+
 					webview
-						.eval(&format!(
-							"new_current(\"{}\");",
-							&new_path.as_path().to_str().unwrap().replace("\\", "\\\\")
-						))
+						.eval(&format!("new_current(\"{}\");", temp))
 						.unwrap();
 					webview.eval("next();").unwrap();
 					webview.eval("toggle_move_window();").unwrap();
