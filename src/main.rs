@@ -13,16 +13,15 @@ fn main() {
 	let mut default_working_folder_name = std::path::PathBuf::new();
 	default_working_folder_name.push(".");
 	default_working_folder_name.push(String::from(env!("CARGO_PKG_NAME")).to_lowercase());
-	/*
 	let config_env = format!(
 		"{}_CONFIG",
 		String::from(env!("CARGO_PKG_NAME")).to_uppercase()
 	);
 	let default_config_file_name = "conf.toml";
-	let default_config_file_path = format!(
-		"./{}/{}",
-		default_working_folder_name, default_config_file_name
-	);
+	let mut default_config_file_path = default_working_folder_name.clone();
+	default_config_file_path.push(default_config_file_name);
+	let default_config_file_path = default_config_file_path.as_path().to_str().unwrap();
+	/*
 	let default_exclude = format!(
 		"/^(.*(\\.git).*)|({}(/|\\)?.*)|(\\..+)$/i",
 		default_working_folder_name.replace(".", "\\.")
@@ -77,19 +76,19 @@ fn main() {
 				.help(r#"The folders where search for files, separated by a coma ","."#)
 				.required(false)
 				.default_value("."),
+		)
+		.arg(
+			clap::Arg::with_name("config_file_path")
+				.short("c")
+				.long("config")
+				.value_name("FILE_PATH")
+				.help("Sets the TOML configuration file path for this application")
+				.takes_value(true)
+				.required(false)
+				.env(&config_env)
+				.default_value(&default_config_file_path),
 		);
 	/*
-	.arg(
-		clap::Arg::with_name("config_file_path")
-			.short("c")
-			.long("config")
-			.value_name("FILE_PATH")
-			.help("Sets the TOML configuration file path for this application")
-			.takes_value(true)
-			.required(false)
-			.env(&config_env)
-			.default_value(&default_config_file_path),
-	)
 	.arg(
 		clap::Arg::with_name("move-mode")
 			.short("m")
@@ -134,6 +133,29 @@ fn main() {
 	let working_folder = matches.value_of("working_folder").unwrap();
 	let sort_order = matches.value_of("sort").unwrap();
 	let working_folder = std::path::Path::new(working_folder);
+	let settings = std::path::PathBuf::from(matches.value_of("config_file_path").unwrap());
+	let settings: Settings = if settings.exists() {
+		let settings = std::fs::read_to_string(settings).unwrap();
+
+		toml::from_str(&settings).unwrap()
+	} else {
+		if show_debug {
+			println!(
+				"DEBUG: settings file does not exists at {}, creating it with default value",
+				&settings.as_path().to_str().unwrap()
+			);
+		}
+
+		if let Some(folder) = &settings.parent() {
+			std::fs::create_dir_all(folder).unwrap();
+		}
+
+		let result = Settings::default();
+
+		std::fs::write(settings, toml::to_vec(&result).unwrap()).unwrap();
+
+		result
+	};
 
 	if show_debug {
 		println!("DEBUG: debug mode activated");
@@ -142,6 +164,7 @@ fn main() {
 		println!("DEBUG: filter regex is {:?}", filter);
 		println!("DEBUG: working folder is {:?}", working_folder);
 		println!("DEBUG: sorting files by {:?}", sort_order);
+		println!("DEBUG: settings are {:?}", &settings);
 		println!();
 	}
 
@@ -249,50 +272,6 @@ fn main() {
 
 	let window_title = format!("{} V{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
 
-	#[derive(Clone)]
-	struct Image {
-		current: std::path::PathBuf,
-	}
-	struct UserData {
-		position: usize,
-		images: Vec<Image>,
-	}
-	impl UserData {
-		fn set_position(&mut self, value: usize) {
-			let mut set = value;
-			if !self.images.is_empty() {
-				if value > (self.images.len() - 1) {
-					set = 0;
-				}
-			} else {
-				set = 0;
-			}
-
-			self.position = set;
-		}
-		fn previous(&mut self) {
-			if self.position < 1 {
-				if !self.images.is_empty() {
-					self.set_position(self.images.len() - 1);
-				} else {
-					self.set_position(0);
-				}
-			} else {
-				self.set_position(self.position - 1);
-			}
-		}
-		fn next(&mut self) {
-			self.set_position(self.position + 1);
-		}
-		fn random(&mut self) {
-			if !self.images.is_empty() {
-				let mut rng = rand::thread_rng();
-				self.set_position(rng.gen_range(0, self.images.len() - 1));
-			} else {
-				self.set_position(0);
-			}
-		}
-	}
 	let user_data = UserData {
 		position: 0,
 		images,
@@ -307,7 +286,7 @@ fn main() {
 			r#"<link rel="stylesheet" href="./main.css">"#,
 			&format!(
 				"<style type=\"text/css\">{}</style>",
-				include_str!("main.css")
+				include_str!("main.css").replace("{{settings.background}}", &settings.background)
 			),
 		);
 
@@ -411,7 +390,9 @@ fn main() {
 						);
 					}
 
-					std::fs::create_dir_all(new_path.parent().unwrap()).unwrap();
+					if let Some(folder) = new_path.parent() {
+						std::fs::create_dir_all(folder).unwrap();
+					}
 
 					std::fs::copy(&image.current, &new_path).unwrap();
 					trash::remove(&image.current).unwrap();
@@ -524,13 +505,70 @@ fn main() {
 	}
 }
 
+#[derive(Clone)]
+struct Image {
+	current: std::path::PathBuf,
+}
+struct UserData {
+	position: usize,
+	images: Vec<Image>,
+}
+impl UserData {
+	fn set_position(&mut self, value: usize) {
+		let mut set = value;
+		if !self.images.is_empty() {
+			if value > (self.images.len() - 1) {
+				set = 0;
+			}
+		} else {
+			set = 0;
+		}
+
+		self.position = set;
+	}
+	fn previous(&mut self) {
+		if self.position < 1 {
+			if !self.images.is_empty() {
+				self.set_position(self.images.len() - 1);
+			} else {
+				self.set_position(0);
+			}
+		} else {
+			self.set_position(self.position - 1);
+		}
+	}
+	fn next(&mut self) {
+		self.set_position(self.position + 1);
+	}
+	fn random(&mut self) {
+		if !self.images.is_empty() {
+			let mut rng = rand::thread_rng();
+			self.set_position(rng.gen_range(0, self.images.len() - 1));
+		} else {
+			self.set_position(0);
+		}
+	}
+}
+
 #[derive(Deserialize)]
 #[serde(tag = "instruction", rename_all = "PascalCase")]
-pub enum Instruction {
+enum Instruction {
 	Previous,
 	Next,
 	Random,
 	SetPosition { value: usize },
 	Move { into: String },
 	Receiving { data: String },
+}
+
+#[derive(Debug, serde_derive::Deserialize, serde_derive::Serialize)]
+struct Settings {
+	background: String,
+}
+impl Default for Settings {
+	fn default() -> Settings {
+		Settings {
+			background: String::from("#FFFFFF"),
+		}
+	}
 }

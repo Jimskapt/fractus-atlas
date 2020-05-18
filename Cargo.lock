@@ -98,7 +98,7 @@ checksum = "d0ad6bf6a88548d1126045c413548df1453d9be094a8ab9fd59bf1fdd338da4f"
 
 [[package]]
 name = "fractus-atlas"
-version = "1.0.1"
+version = "1.1.0"
 dependencies = [
  "clap",
  "dunce",
@@ -107,6 +107,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
+ "toml",
  "trash",
  "web-view",
 ]
@@ -279,9 +280,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.5"
+version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42934bc9c8ab0d3b273a16d8551c8f0fcff46be73276ca083ec2414c15c4ba5e"
+checksum = "54a21852a652ad6f610c9510194f398ff6f8692e334fd1145fed931f7fbe44ea"
 dependencies = [
  "proc-macro2",
 ]
@@ -436,6 +437,15 @@ checksum = "848eb50d6d21430349d82418c2244f611b1ad3e1c52c675320338b3102d06554"
 dependencies = [
  "cc",
  "libc",
+]
+
+[[package]]
+name = "toml"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffc92d160b1eef40665be3a05630d003936a3bc7da7421277846c2613e92c71a"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

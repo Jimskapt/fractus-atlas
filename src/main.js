@@ -12,8 +12,10 @@ let GLOBAL_SELECTED_FOLDER = {
 
 		if (this.get() === "") {
 			document.getElementById('confirmation-move').innerHTML = '';
+			document.getElementById('move_ok').disabled = true;
 		} else {
 			document.getElementById('confirmation-move').innerHTML = 'Current image will be moved inside the `' + this.get() + '/` sub-folder of the working folder.';
+			document.getElementById('move_ok').disabled = false;
 		}
 	}
 };
@@ -208,15 +210,9 @@ function refresh_folders_result(value) {
 		search_items += '<label><input type="radio" name="selected_folder" value="' + value + '" /> ' + value +
 			'</label><br>';
 		found++;
-
-		GLOBAL_SELECTED_FOLDER.set(value);
 	}
 
-	if (found <= 0) {
-		document.getElementById('move_ok').disabled = true;
-	} else {
-		document.getElementById('move_ok').disabled = false;
-	}
+	GLOBAL_SELECTED_FOLDER.set(value);
 
 	document.getElementById('move_search_results').innerHTML = search_items;
 

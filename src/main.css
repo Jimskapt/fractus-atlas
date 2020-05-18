@@ -7,8 +7,8 @@ body {
 }
 
 body {
-	background-color: grey;
 	overflow: hidden;
+	background: {{settings.background}};
 }
 
 header,
@@ -17,22 +17,36 @@ button#main_next {
 	position: fixed;
 	top: 0;
 	opacity: 0.3;
-	background-color: grey;
 }
 
 header:not(:disabled):hover,
 button#main_previous:not(:disabled):hover,
 button#main_next:not(:disabled):hover {
 	opacity: 0.9;
+	color: white;
+}
+
+button#main_previous:not(:disabled):hover {
+	background: linear-gradient(to left, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.3));
+}
+
+button#main_next:not(:disabled):hover {
+	background: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.3));
 }
 
 header {
-	padding: 0.5em 1em;
 	z-index: 10;
 	text-align: center;
-	right: 15%;
-	width: 70%;
-	border-radius: 0 0 1em 1em;
+	width: 100%;
+	padding-bottom: 2em;
+}
+
+header:hover {
+	background: linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.3));
+}
+
+header:hover * {
+	color: white;
 }
 
 header #progress {
@@ -59,9 +73,9 @@ header button {
 }
 
 article {
-	width: 100%;
-	text-align: center;
-	vertical-align: middle;
+	width: 100vw;
+	height: 100vh;
+	padding: auto;
 }
 
 button#main_previous,
@@ -71,14 +85,17 @@ button#main_next {
 	font-size: xx-large;
 	z-index: 5;
 	cursor: pointer;
+	background: none;
 }
 
 button#main_previous {
 	left: 0;
+	padding-right: 1em;
 }
 
 button#main_next {
 	right: 0;
+	padding-left: 1em;
 }
 
 img#image {
@@ -91,20 +108,20 @@ img#image {
 article #no-images-error {
 	display: block;
 	position: fixed;
+	right: 15%;
+	left: 15%;
 	top: 50%;
-	right: 20%;
-	left: 20%;
 	background: pink;
 	color: red;
 	border: 1px solid red;
-	padding: 1em;
-	border-radius: 1em;
+	border-radius: 0.5em;
+	text-align: center;
 }
 
 #move_window {
 	display: none;
 	z-index: 20;
-	background: rgba(0, 0, 0, 0.8);
+	background: rgba(0, 0, 0, 0.6);
 	color: white;
 	position: absolute;
 	top: 0;
@@ -115,17 +132,16 @@ article #no-images-error {
 }
 
 #move_window #inner_window {
-	border: 1px solid white;
 	padding: 2em;
-	border-radius: 2em;
 }
 
 #move_window input[type="search"] {
-	background: grey;
 	color: white;
+	background: none;
+	border: 1px solid white;
 	width: 100%;
-	border: none;
 	padding: 0.5em;
+	border-radius: 0.5em;
 }
 
 #move_window #move_actions {
@@ -153,10 +169,11 @@ article #no-images-error {
 	background: darkolivegreen;
 }
 
-#move_window #move_actions button#move_ok:disabled {
-	background: grey;
-}
-
 #move_window #move_actions button#move_ok:not(:disabled):hover {
 	background: green;
+}
+
+#move_window #move_actions button#move_ok:disabled {
+	background: grey;
+	cursor: not-allowed;
 }

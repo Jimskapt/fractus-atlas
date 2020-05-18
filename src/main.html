@@ -16,18 +16,16 @@
 	<header>
 		<input type="text" readonly="readonly" id="imgpath" />
 		<span id="progress">
-			<button onclick="previous()" title="go to previous image">⬅</button>
 			<input type="number" id="position_input" onchange="change_position()" /> / <span id="max_counter"></span>
 			<button onclick="random()" title="go to random image">🔀</button>
 			<button onclick="toggle_move_window()" title="move this image">🚚</button>
-			<button onclick="next()" title="go to next image">➡</button>
 		</span>
 	</header>
 
 	<button onclick="previous()" id="main_previous" title="go to previous image">⬅</button>
 
 	<article>
-		<img src="" alt="image" id="image" />
+		<img src="" alt="image" id="image" style="display: none;" />
 		<p id="no-images-error">❌ There is no images in this targets.</p>
 		<!--[if lt IE 9]>
 		<p style="position: fixed; bottom: 0; width: 100vw;">
@@ -38,7 +36,7 @@
 
 	<button onclick="next()" id="main_next" title="go to next image">➡</button>
 
-	<div id="move_window">
+	<div id="move_window" style="display: none;">
 		<div id="inner_window">
 			<input type="search" id="move_search" />
 			<p>Move current image in selected folder :</p>
