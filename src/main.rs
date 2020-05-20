@@ -302,18 +302,84 @@ fn main() {
 				Instruction::Previous => {
 					webview.user_data_mut().previous();
 
-					let js_instruction =
-						format!("set_position({});", &webview.user_data().position);
+					let js_instruction = format!(
+						"App.remote.receive.set_current({}, '{}');",
+						&webview.user_data().position,
+						&webview
+							.user_data()
+							.get_current()
+							.replace("\\", "\\\\")
+							.replace("'", "\\'")
+					);
 					if show_debug {
 						println!("sending {} to view from previous()", js_instruction);
+					}
+					webview.eval(&js_instruction).unwrap();
+
+					let js_instruction = format!(
+						"App.remote.receive.preload('{}');",
+						&webview
+							.user_data()
+							.get_next()
+							.replace("\\", "\\\\")
+							.replace("'", "\\'")
+					);
+					if show_debug {
+						println!("sending {} to view from next()", js_instruction);
+					}
+					webview.eval(&js_instruction).unwrap();
+
+					let js_instruction = format!(
+						"App.remote.receive.preload('{}');",
+						&webview
+							.user_data()
+							.get_previous()
+							.replace("\\", "\\\\")
+							.replace("'", "\\'")
+					);
+					if show_debug {
+						println!("sending {} to view from next()", js_instruction);
 					}
 					webview.eval(&js_instruction).unwrap();
 				}
 				Instruction::Next => {
 					webview.user_data_mut().next();
 
-					let js_instruction =
-						format!("set_position({});", &webview.user_data().position);
+					let js_instruction = format!(
+						"App.remote.receive.set_current({}, '{}');",
+						&webview.user_data().position,
+						&webview
+							.user_data()
+							.get_current()
+							.replace("\\", "\\\\")
+							.replace("'", "\\'")
+					);
+					if show_debug {
+						println!("sending {} to view from next()", js_instruction);
+					}
+					webview.eval(&js_instruction).unwrap();
+
+					let js_instruction = format!(
+						"App.remote.receive.preload('{}');",
+						&webview
+							.user_data()
+							.get_next()
+							.replace("\\", "\\\\")
+							.replace("'", "\\'")
+					);
+					if show_debug {
+						println!("sending {} to view from next()", js_instruction);
+					}
+					webview.eval(&js_instruction).unwrap();
+
+					let js_instruction = format!(
+						"App.remote.receive.preload('{}');",
+						&webview
+							.user_data()
+							.get_previous()
+							.replace("\\", "\\\\")
+							.replace("'", "\\'")
+					);
 					if show_debug {
 						println!("sending {} to view from next()", js_instruction);
 					}
@@ -322,18 +388,40 @@ fn main() {
 				Instruction::Random => {
 					webview.user_data_mut().random();
 
-					let js_instruction =
-						format!("set_position({});", &webview.user_data().position);
+					let js_instruction = format!(
+						"App.remote.receive.set_current({}, '{}');",
+						&webview.user_data().position,
+						&webview
+							.user_data()
+							.get_current()
+							.replace("\\", "\\\\")
+							.replace("'", "\\'")
+					);
 					if show_debug {
 						println!("sending {} to view from random()", js_instruction);
 					}
 					webview.eval(&js_instruction).unwrap();
 				}
 				Instruction::SetPosition { value } => {
-					webview.user_data_mut().set_position(value);
+					let data = webview.user_data_mut();
 
-					let js_instruction =
-						format!("set_position({});", &webview.user_data().position);
+					let new_value = if value > data.images.len() {
+						data.images.len() - 1
+					} else {
+						value
+					};
+
+					data.set_position(new_value);
+
+					let js_instruction = format!(
+						"App.remote.receive.set_current({}, '{}');",
+						&webview.user_data().position,
+						&webview
+							.user_data()
+							.get_current()
+							.replace("\\", "\\\\")
+							.replace("'", "\\'")
+					);
 					if show_debug {
 						println!("sending {} to view from random()", js_instruction);
 					}
@@ -397,45 +485,36 @@ fn main() {
 					std::fs::copy(&image.current, &new_path).unwrap();
 					trash::remove(&image.current).unwrap();
 
-					let temp = new_path
-						.clone()
-						.as_path()
-						.to_str()
-						.unwrap()
-						.replace("\\", "\\\\");
-
 					udata.images[udata.position].current = new_path;
 
-					webview
-						.eval(&format!("new_current(\"{}\");", temp))
-						.unwrap();
-					webview.eval("next();").unwrap();
-					webview.eval("toggle_move_window();").unwrap();
+					webview.eval("App.remote.send('Next');").unwrap();
+					webview.eval("App.methods.toggle_move_window();").unwrap();
 
 					// TODO : following is duplicate :
 					let mut folders: Vec<String> = vec![];
 					for entry in std::fs::read_dir(&working_folder).unwrap() {
 						let path = entry.unwrap().path();
 						if path.is_dir() {
-							folders.push(String::from(path.file_name().unwrap().to_str().unwrap()));
+							folders.push(
+								String::from(path.file_name().unwrap().to_str().unwrap())
+									.replace("'", "\\'"),
+							);
 						}
 					}
-					let mut folders_buffer = String::from("[\"");
-					folders_buffer += &folders.join("\",\"");
-					folders_buffer += "\"]";
+					let mut folders_buffer = String::from("['");
+					folders_buffer += &folders.join("','");
+					folders_buffer += "']";
 
-					if folders_buffer == "[\"\"]" {
+					if folders_buffer == "['']" {
 						folders_buffer = String::from("[]");
 					}
 
 					webview
-						.eval(&format!("set_folders({});", &folders_buffer))
+						.eval(&format!(
+							"App.remote.receive.set_folders({});",
+							&folders_buffer
+						))
 						.unwrap();
-				}
-				Instruction::Receiving { data } => {
-					if show_debug {
-						println!("receiving {} from view", data);
-					}
 				}
 			}
 
@@ -443,22 +522,6 @@ fn main() {
 		})
 		.build()
 		.unwrap();
-
-	let mut images_buffer = String::from("[\"");
-
-	let temp = main_window.user_data().images.clone();
-	images_buffer += &temp
-		.iter()
-		.map(|i| String::from(i.current.to_str().unwrap()))
-		.collect::<Vec<String>>()
-		.join("\",\"");
-	images_buffer += "\"]";
-
-	images_buffer = images_buffer.replace("\\", "\\\\");
-
-	if images_buffer == "[\"\"]" {
-		images_buffer = String::from("[]");
-	}
 
 	let mut folders: Vec<String> = vec![];
 	for entry in std::fs::read_dir(&working_folder).unwrap() {
@@ -477,17 +540,37 @@ fn main() {
 
 	if show_debug {
 		// println!("DEBUG: sending images to web_view window : {}", images_buffer);
-		println!("DEBUG: sending images to web_view window");
+		println!(
+			"DEBUG: sending folders to web_view window : {}",
+			&folders_buffer
+		);
 	}
 
 	let handle = main_window.handle();
 	handle
 		.dispatch(move |main_window| {
 			main_window
-				.eval(&format!("set_images({});", &images_buffer))
+				.eval(&format!(
+					"App.remote.receive.set_images_count({});",
+					&main_window.user_data().images.len()
+				))
 				.unwrap();
 			main_window
-				.eval(&format!("set_folders({});", &folders_buffer))
+				.eval(&format!(
+					"App.remote.receive.set_folders({});",
+					&folders_buffer
+				))
+				.unwrap();
+			main_window
+				.eval(&format!(
+					"App.remote.receive.set_current({}, '{}');",
+					&main_window.user_data().position,
+					&main_window
+						.user_data()
+						.get_current()
+						.replace("\\", "\\\\")
+						.replace("'", "\\'")
+				))
 				.unwrap();
 
 			Ok(())
@@ -514,6 +597,16 @@ struct UserData {
 	images: Vec<Image>,
 }
 impl UserData {
+	fn get_current(&self) -> String {
+		return String::from(
+			self.images[self.position]
+				.current
+				.as_path()
+				.to_str()
+				.unwrap(),
+		);
+	}
+
 	fn set_position(&mut self, value: usize) {
 		let mut set = value;
 		if !self.images.is_empty() {
@@ -526,6 +619,7 @@ impl UserData {
 
 		self.position = set;
 	}
+
 	fn previous(&mut self) {
 		if self.position < 1 {
 			if !self.images.is_empty() {
@@ -537,9 +631,31 @@ impl UserData {
 			self.set_position(self.position - 1);
 		}
 	}
+
 	fn next(&mut self) {
 		self.set_position(self.position + 1);
 	}
+
+	fn get_next(&self) -> String {
+		let pos = if self.position >= self.images.len() - 1 {
+			0
+		} else {
+			self.position + 1
+		};
+
+		return String::from(self.images[pos].current.as_path().to_str().unwrap());
+	}
+
+	fn get_previous(&self) -> String {
+		let pos = if self.position == 0 {
+			self.images.len() - 1
+		} else {
+			self.position - 1
+		};
+
+		return String::from(self.images[pos].current.as_path().to_str().unwrap());
+	}
+
 	fn random(&mut self) {
 		if !self.images.is_empty() {
 			let mut rng = rand::thread_rng();
@@ -558,7 +674,6 @@ enum Instruction {
 	Random,
 	SetPosition { value: usize },
 	Move { into: String },
-	Receiving { data: String },
 }
 
 #[derive(Debug, serde_derive::Deserialize, serde_derive::Serialize)]

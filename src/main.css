@@ -45,7 +45,7 @@ header:hover {
 	background: linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.3));
 }
 
-header:hover * {
+header:hover *:not(:disabled) {
 	color: white;
 }
 
@@ -116,6 +116,7 @@ article #no-images-error {
 	border: 1px solid red;
 	border-radius: 0.5em;
 	text-align: center;
+	padding: 1em;
 }
 
 #move_window {

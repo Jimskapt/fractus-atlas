@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 
 <head>
 
@@ -16,13 +16,13 @@
 	<header>
 		<input type="text" readonly="readonly" id="imgpath" />
 		<span id="progress">
-			<input type="number" id="position_input" onchange="change_position()" /> / <span id="max_counter"></span>
-			<button onclick="random()" title="go to random image">🔀</button>
-			<button onclick="toggle_move_window()" title="move this image">🚚</button>
+			<input type="number" id="position_input" onchange="App.methods.request_position_change();" /> / <span id="max_counter"></span>
+			<button onclick="App.remote.send('Random')" title="go to random image">🔀</button>
+			<button onclick="App.methods.toggle_move_window()" title="move this image">🚚</button>
 		</span>
 	</header>
 
-	<button onclick="previous()" id="main_previous" title="go to previous image">⬅</button>
+	<button onclick="App.remote.send('Previous')" id="main_previous" title="go to previous image">⬅</button>
 
 	<article>
 		<img src="" alt="image" id="image" style="display: none;" />
@@ -34,7 +34,7 @@
 		<![endif]-->
 	</article>
 
-	<button onclick="next()" id="main_next" title="go to next image">➡</button>
+	<button onclick="App.remote.send('Next')" id="main_next" title="go to next image">➡</button>
 
 	<div id="move_window" style="display: none;">
 		<div id="inner_window">
@@ -42,8 +42,8 @@
 			<p>Move current image in selected folder :</p>
 			<div id="move_search_results"></div>
 			<div id="move_actions">
-				<button onclick="toggle_move_window()" id="move_abort">❌ Abort</button>
-				<button onclick="move()" id="move_ok">🚚 Move</button>
+				<button onclick="App.methods.toggle_move_window()" id="move_abort">❌ Abort</button>
+				<button onclick="App.methods.do_move();" id="move_ok">🚚 Move</button>
 			</div>
 			<p id="confirmation-move"></p>
 		</div>
