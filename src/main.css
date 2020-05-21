@@ -8,7 +8,7 @@ body {
 
 body {
 	overflow: hidden;
-	background: {{settings.background}};
+	background: white; /* settings.background */
 }
 
 header,

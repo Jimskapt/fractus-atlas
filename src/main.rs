@@ -1,6 +1,8 @@
 // TODO : translations ?
 // TODO : better error handling (search for `unwrap`)
 
+#![allow(clippy::needless_return)]
+
 use rand::seq::IteratorRandom;
 use rand::Rng;
 use serde_derive::*;
@@ -280,13 +282,22 @@ fn main() {
 	let html = include_str!("main.html")
 		.replace(
 			r#"<script src="./main.js"></script>"#,
-			&format!("<script>{}</script>", include_str!("main.js")),
+			&format!(
+				"<script>{}</script>",
+				include_str!("main.js").replace(
+					"debug: false, // context.debug",
+					&format!("debug: {},", if show_debug { "true" } else { "false" })
+				)
+			),
 		)
 		.replace(
 			r#"<link rel="stylesheet" href="./main.css">"#,
 			&format!(
 				"<style type=\"text/css\">{}</style>",
-				include_str!("main.css").replace("{{settings.background}}", &settings.background)
+				include_str!("main.css").replace(
+					"background: white; /* settings.background */",
+					&format!("background: {};", &settings.background)
+				)
 			),
 		);
 
@@ -530,16 +541,15 @@ fn main() {
 			folders.push(String::from(path.file_name().unwrap().to_str().unwrap()));
 		}
 	}
-	let mut folders_buffer = String::from("[\"");
-	folders_buffer += &folders.join("\",\"");
-	folders_buffer += "\"]";
+	let mut folders_buffer = String::from("['");
+	folders_buffer += &folders.join("','");
+	folders_buffer += "']";
 
-	if folders_buffer == "[\"\"]" {
+	if folders_buffer == "['']" {
 		folders_buffer = String::from("[]");
 	}
 
 	if show_debug {
-		// println!("DEBUG: sending images to web_view window : {}", images_buffer);
 		println!(
 			"DEBUG: sending folders to web_view window : {}",
 			&folders_buffer
@@ -555,23 +565,27 @@ fn main() {
 					&main_window.user_data().images.len()
 				))
 				.unwrap();
+
 			main_window
 				.eval(&format!(
 					"App.remote.receive.set_folders({});",
 					&folders_buffer
 				))
 				.unwrap();
-			main_window
-				.eval(&format!(
-					"App.remote.receive.set_current({}, '{}');",
-					&main_window.user_data().position,
-					&main_window
-						.user_data()
-						.get_current()
-						.replace("\\", "\\\\")
-						.replace("'", "\\'")
-				))
-				.unwrap();
+
+			if !main_window.user_data().images.is_empty() {
+				main_window
+					.eval(&format!(
+						"App.remote.receive.set_current({}, '{}');",
+						&main_window.user_data().position,
+						&main_window
+							.user_data()
+							.get_current()
+							.replace("\\", "\\\\")
+							.replace("'", "\\'")
+					))
+					.unwrap();
+			}
 
 			Ok(())
 		})

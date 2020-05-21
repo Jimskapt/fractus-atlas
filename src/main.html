@@ -16,7 +16,8 @@
 	<header>
 		<input type="text" readonly="readonly" id="imgpath" />
 		<span id="progress">
-			<input type="number" id="position_input" onchange="App.methods.request_position_change();" /> / <span id="max_counter"></span>
+			<input type="number" id="position_input" onchange="App.methods.request_position_change();" /> / <span
+				id="max_counter"></span>
 			<button onclick="App.remote.send('Random')" title="go to random image">🔀</button>
 			<button onclick="App.methods.toggle_move_window()" title="move this image">🚚</button>
 		</span>
@@ -25,7 +26,7 @@
 	<button onclick="App.remote.send('Previous')" id="main_previous" title="go to previous image">⬅</button>
 
 	<article>
-		<img src="" alt="image" id="image" style="display: none;" />
+		<img src="" id="image" alt="image" style="display: none;" onerror="App.methods.image_not_found_error();" />
 		<p id="no-images-error">❌ There is no images in this targets.</p>
 		<!--[if lt IE 9]>
 		<p style="position: fixed; bottom: 0; width: 100vw;">
