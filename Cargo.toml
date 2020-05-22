@@ -1,6 +1,6 @@
 [package]
 name = "fractus-atlas"
-version = "1.1.2"
+version = "1.2.0"
 description = "An image viewer which allows you to quickly move them in folders."
 authors = ["Jimskapt <rami.programmer@gmail.com>"]
 edition = "2018"
@@ -18,3 +18,4 @@ serde_derive = "^1"
 serde_json = "^1"
 trash = "^1"
 toml = "^0"
+tinyfiledialogs = "^3"

@@ -1,4 +1,4 @@
-/* this file will be included in main.html */
+/* this file will be included in main.html by main.rs */
 
 html,
 body {
@@ -119,7 +119,7 @@ article #no-images-error {
 	padding: 1em;
 }
 
-#move_window {
+.popup_window {
 	display: none;
 	z-index: 20;
 	background: rgba(0, 0, 0, 0.6);
@@ -129,11 +129,7 @@ article #no-images-error {
 	right: 0;
 	bottom: 0;
 	left: 0;
-	padding: 2em;
-}
-
-#move_window #inner_window {
-	padding: 2em;
+	padding: 4em;
 }
 
 #move_window input[type="search"] {
@@ -145,11 +141,11 @@ article #no-images-error {
 	border-radius: 0.5em;
 }
 
-#move_window #move_actions {
+.popup_window .window_actions {
 	text-align: center;
 }
 
-#move_window #move_actions button {
+.popup_window .window_actions button {
 	margin: 1em;
 	color: white;
 	min-width: 40%;
@@ -158,23 +154,37 @@ article #no-images-error {
 	cursor: pointer;
 }
 
-#move_window #move_actions button#move_abort {
+.abort_action {
 	background: crimson;
 }
 
-#move_window #move_actions button#move_abort:hover {
+.abort_action:hover {
 	background: red;
 }
 
-#move_window #move_actions button#move_ok {
+.do_action {
 	background: darkolivegreen;
 }
 
-#move_window #move_actions button#move_ok:not(:disabled):hover {
+.do_action:not(:disabled):hover {
 	background: green;
 }
 
-#move_window #move_actions button#move_ok:disabled {
+.do_action:disabled {
 	background: grey;
 	cursor: not-allowed;
+}
+
+#open_window #target_folders_inputs * {
+	border: none;
+	margin-bottom: 1%;
+}
+
+#open_window #target_folders_inputs input[type="text"] {
+	width: 79%;
+	margin-right: 1%;
+}
+
+#open_window #target_folders_inputs button {
+	width: 19%;
 }

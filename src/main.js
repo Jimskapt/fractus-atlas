@@ -1,4 +1,4 @@
-// this file will be included in main.html
+// this file will be included in main.html by main.rs
 
 'use strict';
 
@@ -10,6 +10,7 @@ let App = {
 		current_image: '',
 		images_count: 0,
 		folders: [],
+		target_folders: [],
 		selected_folder: {
 			_value: '',
 			get: function () {
@@ -33,10 +34,9 @@ let App = {
 
 			if (App.data.images_count > 0) {
 
-				const nodes = document.querySelectorAll("#progress button");
-				for (let i = 0; i < nodes.length; i++) {
-					nodes[i].disabled = false;
-				}
+				document.getElementById("header_random").disabled = false;
+				document.getElementById("header_move").disabled = false;
+
 				document.getElementById("position_input").disabled = false;
 				document.getElementById("main_next").disabled = false;
 				document.getElementById("main_previous").disabled = false;
@@ -45,10 +45,9 @@ let App = {
 
 			} else if (App.data.images_count <= 0) {
 
-				const nodes = document.querySelectorAll("#progress button");
-				for (let i = 0; i < nodes.length; i++) {
-					nodes[i].disabled = true;
-				}
+				document.getElementById("header_random").disabled = true;
+				document.getElementById("header_move").disabled = true;
+
 				document.getElementById("position_input").disabled = true;
 				document.getElementById("main_next").disabled = true;
 				document.getElementById("main_previous").disabled = true;
@@ -151,10 +150,35 @@ let App = {
 
 			}
 		},
+		toggle_open_window: function () {
+
+			if (App.data.mode === 'open') {
+
+				App.data.mode = 'browse';
+				document.getElementById('open_window').style.display = 'none';
+
+			} else {
+
+				App.data.mode = 'open';
+				document.getElementById('open_window').style.display = 'block';
+
+			}
+		},
 		do_move: function () {
 			App.remote.send({
 				instruction: 'Move',
 				into: App.data.selected_folder.get()
+			});
+		},
+		do_open: function (toggle_window) {
+			if (toggle_window === undefined) {
+				toggle_window = true;
+			}
+
+			App.remote.send({
+				instruction: 'BrowseTargetFolders',
+				folders: App.data.target_folders,
+				toggle_window: toggle_window,
 			});
 		},
 		request_position_change: function () {
@@ -201,6 +225,59 @@ let App = {
 				preloadLink.rel = "preload";
 				preloadLink.as = "image";
 				document.head.appendChild(preloadLink);
+			},
+			set_targets: function (targets) {
+				const inputs = document.getElementById('target_folders_inputs');
+
+				while (inputs.firstChild) {
+					inputs.removeChild(inputs.lastChild);
+				}
+
+				const browse_prefix = 'browse-';
+				const click_listener = function (event) {
+					App.remote.send({
+						instruction: 'ShowBrowseTarget',
+						id: Number(event.target.id.substring(browse_prefix.length))
+					});
+				};
+
+				App.data.target_folders = targets;
+
+				for (let i = 0; i < App.data.target_folders.length; i++) {
+					const target = App.data.target_folders[i];
+
+					const input = document.createElement('input');
+					input.setAttribute('type', 'text');
+					input.setAttribute('value', target);
+					input.setAttribute('disabled', true);
+					inputs.appendChild(input);
+
+					const button = document.createElement('button');
+					button.innerHTML = '📂 Browse ...';
+					button.id = browse_prefix + i;
+					button.addEventListener('click', click_listener);
+					inputs.appendChild(button);
+
+					inputs.appendChild(document.createElement('br'));
+				}
+
+				const input = document.createElement('input');
+				input.setAttribute('type', 'text');
+				input.setAttribute('value', '');
+				input.setAttribute('disabled', true);
+				inputs.appendChild(input);
+
+				const button = document.createElement('button');
+				button.innerHTML = '📂 Browse ...';
+				button.addEventListener('click', function () {
+					App.remote.send({
+						instruction: 'ShowBrowseTarget',
+						id: targets.length
+					});
+				});
+				inputs.appendChild(button);
+
+				inputs.appendChild(document.createElement('br'));
 			}
 		},
 		send: function (argument) {
@@ -222,6 +299,10 @@ document.addEventListener("keyup", function (event) {
 		if (event.keyCode === 27) { // echap
 			App.methods.toggle_move_window();
 		}
+	} else if (App.data.mode === 'open') {
+		if (event.keyCode === 27) { // echap
+			App.methods.toggle_open_window();
+		}
 	} else {
 		if (event.keyCode === 39) { // right
 			App.remote.send('Next');
@@ -236,9 +317,11 @@ document.addEventListener("keyup", function (event) {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
+
 	App.data.selected_folder.set('');
 	App.methods.refresh_image();
 	App.methods.refresh_folders_result("");
+	App.remote.receive.set_targets([]);
 
 	if (App.data.debug) {
 		alert('Debug mode activated.');

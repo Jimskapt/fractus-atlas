@@ -18,8 +18,9 @@
 		<span id="progress">
 			<input type="number" id="position_input" onchange="App.methods.request_position_change();" /> / <span
 				id="max_counter"></span>
-			<button onclick="App.remote.send('Random')" title="go to random image">🔀</button>
-			<button onclick="App.methods.toggle_move_window()" title="move this image">🚚</button>
+			<button onclick="App.methods.toggle_open_window()" title="open other(s) folder(s)">📂</button>
+			<button onclick="App.remote.send('Random')" title="go to random image" id="header_random">🔀</button>
+			<button onclick="App.methods.toggle_move_window()" title="move this image" id="header_move">🚚</button>
 		</span>
 	</header>
 
@@ -27,7 +28,10 @@
 
 	<article>
 		<img src="" id="image" alt="image" style="display: none;" onerror="App.methods.image_not_found_error();" />
-		<p id="no-images-error">❌ There is no images in this targets.</p>
+		<p id="no-images-error">
+			❌ There is no images in this targets.<br>
+			<button onclick="App.methods.toggle_open_window()" style="margin-top: 0.5em;">📂 Open other(s) folder(s)</button>
+		</p>
 		<!--[if lt IE 9]>
 		<p style="position: fixed; bottom: 0; width: 100vw;">
 			(please upgrade Microsoft Internet Explorer to continue using this software)
@@ -37,16 +41,22 @@
 
 	<button onclick="App.remote.send('Next')" id="main_next" title="go to next image">➡</button>
 
-	<div id="move_window" style="display: none;">
-		<div id="inner_window">
-			<input type="search" id="move_search" />
-			<p>Move current image in selected folder :</p>
-			<div id="move_search_results"></div>
-			<div id="move_actions">
-				<button onclick="App.methods.toggle_move_window()" id="move_abort">❌ Abort</button>
-				<button onclick="App.methods.do_move();" id="move_ok">🚚 Move</button>
-			</div>
-			<p id="confirmation-move"></p>
+	<div id="move_window" class="popup_window" style="display: none;">
+		<input type="search" id="move_search" />
+		<p>Move current image in selected folder :</p>
+		<div id="move_search_results"></div>
+		<div class="window_actions">
+			<button onclick="App.methods.toggle_move_window()" id="move_abort" class="abort_action">❌ Abort</button>
+			<button onclick="App.methods.do_move();" id="move_ok" class="do_action">🚚 Move</button>
+		</div>
+		<p id="confirmation-move"></p>
+	</div>
+
+	<div id="open_window" class="popup_window" style="display: none;">
+		<div id="target_folders_inputs"></div>
+		<div class="window_actions">
+			<button onclick="App.methods.toggle_open_window()" id="open_abort" class="abort_action">❌ Abort</button>
+			<button onclick="App.methods.do_open();" id="open_ok" class="do_action">📂 Open</button>
 		</div>
 	</div>
 
