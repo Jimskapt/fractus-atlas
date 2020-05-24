@@ -8,7 +8,7 @@ body {
 
 body {
 	overflow: hidden;
-	background: white; /* settings.background */
+	background: white; /* configuration.background */
 }
 
 header,
@@ -132,7 +132,7 @@ article #no-images-error {
 	padding: 4em;
 }
 
-#move_window input[type="search"] {
+#move_window input[type="text"] {
 	color: white;
 	background: none;
 	border: 1px solid white;

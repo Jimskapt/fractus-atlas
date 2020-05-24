@@ -3,7 +3,9 @@
 
 #![allow(clippy::needless_return)]
 
+use rand::seq::IteratorRandom;
 use rand::Rng;
+use std::sync::{Arc, Mutex};
 
 mod instructions;
 
@@ -13,7 +15,6 @@ fn main() {
 		String::from(env!("CARGO_PKG_NAME")).to_uppercase()
 	);
 	let mut default_working_folder_name = std::path::PathBuf::new();
-	default_working_folder_name.push(".");
 	default_working_folder_name.push(String::from(env!("CARGO_PKG_NAME")).to_lowercase());
 	let config_env = format!(
 		"{}_CONFIG",
@@ -29,6 +30,7 @@ fn main() {
 		default_working_folder_name.replace(".", "\\.")
 	);
 	*/
+	let default_filter_regex = "\\.((png)|(tiff)|(tif)|(bmp)|(jpg)|(jpeg)|(gif)|(jfif))$";
 
 	let app = clap::App::new(env!("CARGO_PKG_NAME"))
 		.version(env!("CARGO_PKG_VERSION"))
@@ -60,7 +62,7 @@ fn main() {
 				.help("Exclude paths which match with this Regular Expression. The match is case insensitive, to the moment.")
 				.takes_value(true)
 				.required(false)
-				.default_value("\\.((png)|(tiff)|(tif)|(bmp)|(jpg)|(jpeg)|(gif)|(jfif))$"),
+				.default_value(&default_filter_regex),
 		)
 		.arg(
 			clap::Arg::with_name("sort")
@@ -77,7 +79,7 @@ fn main() {
 			clap::Arg::with_name("TARGETS")
 				.help(r#"The folders where search for files, separated by a coma ","."#)
 				.required(false)
-				.default_value("."),
+				.default_value(""),
 		)
 		.arg(
 			clap::Arg::with_name("config_file_path")
@@ -135,26 +137,60 @@ fn main() {
 	let working_folder = matches.value_of("working_folder").unwrap();
 	let sort_order = matches.value_of("sort").unwrap();
 	let working_folder = std::path::Path::new(working_folder);
-	let settings = std::path::PathBuf::from(matches.value_of("config_file_path").unwrap());
-	let settings: Settings = if settings.exists() {
-		let settings = std::fs::read_to_string(settings).unwrap();
+	let configuration = std::path::PathBuf::from(matches.value_of("config_file_path").unwrap());
+	let configuration: Configuration = if configuration.exists() {
+		let configuration = std::fs::read_to_string(configuration);
 
-		toml::from_str(&settings).unwrap()
+		match configuration {
+			Ok(configuration) => match toml::from_str(&configuration) {
+				Ok(configuration) => configuration,
+				Err(e) => {
+					println!(
+							"INFO: error while parsing configuration, falling back to default configuration (this is not fatal) : {}",
+							e
+						);
+
+					Configuration::default()
+				}
+			},
+			Err(e) => {
+				println!(
+					"INFO: error while reading configuration, falling back to default configuration (this is not fatal) : {}",
+					e
+				);
+
+				Configuration::default()
+			}
+		}
 	} else {
 		if show_debug {
 			println!(
-				"DEBUG: settings file does not exists at {}, creating it with default value",
-				&settings.as_path().to_str().unwrap()
+				"DEBUG: configuration file does not exists at {}, creating it with default value",
+				&configuration.as_path().to_str().unwrap()
 			);
 		}
 
-		if let Some(folder) = &settings.parent() {
-			std::fs::create_dir_all(folder).unwrap();
+		let result = Configuration::default();
+
+		if let Some(folder) = &configuration.parent() {
+			match std::fs::create_dir_all(folder) {
+				Ok(_) => match std::fs::write(&configuration, toml::to_vec(&result).unwrap()) {
+					Ok(_) => {}
+					Err(e) => {
+						println!(
+							"INFO: can not create file {:?} (this is not fatal) : {}",
+							&configuration, e
+						);
+					}
+				},
+				Err(e) => {
+					println!(
+						"INFO: can not create folder {:?} (this is not fatal) : {}",
+						&folder, e
+					);
+				}
+			}
 		}
-
-		let result = Settings::default();
-
-		std::fs::write(settings, toml::to_vec(&result).unwrap()).unwrap();
 
 		result
 	};
@@ -166,7 +202,7 @@ fn main() {
 		println!("DEBUG: filter regex is {:?}", filter);
 		println!("DEBUG: working folder is {:?}", working_folder);
 		println!("DEBUG: sorting files by {:?}", sort_order);
-		println!("DEBUG: settings are {:?}", &settings);
+		println!("DEBUG: {:?}", &configuration);
 		println!();
 	}
 
@@ -177,55 +213,81 @@ fn main() {
 		);
 		println!();
 
-		std::fs::create_dir_all(working_folder).unwrap();
+		std::fs::create_dir_all(&working_folder).unwrap_or_else(|_| {
+			panic!(
+				"INFO: can not creating working folder : {:?}",
+				&working_folder
+			)
+		});
 	}
 
 	let working_folder = dunce::canonicalize(working_folder).unwrap();
 
-	let file_regex = regex::RegexBuilder::new(filter)
+	// TODO : fix case_insensitive
+	let file_regex = match regex::RegexBuilder::new(&filter)
 		.case_insensitive(true)
 		.build()
-		.unwrap();
+	{
+		Ok(res) => res,
+		Err(e) => {
+			println!(
+					"INFO: compilation of filter regex {} has failed, falling back to default ({}) : {}",
+					&filter, &default_filter_regex, e
+				);
+
+			regex::RegexBuilder::new(&default_filter_regex)
+				.case_insensitive(true)
+				.build()
+				.unwrap()
+		}
+	};
 
 	let window_title = format!("{} V{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
 
+	let mut rng = rand::thread_rng();
+	let selected_port = rng.gen_range(1024, 65535);
+
 	let user_data = UserData {
+		internal_server_port: selected_port,
 		position: 0,
 		images: vec![],
 		targets: targets.into_iter().map(String::from).collect(),
+		show_debug,
+		token: String::new(),
 	};
+
+	let arc_udata: Arc<Mutex<UserData>> = Arc::new(Mutex::new(user_data));
 
 	let html = include_str!("main.html")
 		.replace(
-			r#"<script src="./main.js"></script>"#,
-			&format!(
-				"<script>{}</script>",
-				include_str!("main.js").replace(
-					"debug: false, // context.debug",
-					&format!("debug: {},", if show_debug { "true" } else { "false" })
-				)
-			),
+			r#"<script src="main.js"></script>"#,
+			&format!("<script>{}</script>", include_str!("main.js")),
 		)
 		.replace(
-			r#"<link rel="stylesheet" href="./main.css">"#,
+			r#"<link rel="stylesheet" href="main.css">"#,
 			&format!(
 				"<style type=\"text/css\">{}</style>",
 				include_str!("main.css").replace(
-					"background: white; /* settings.background */",
-					&format!("background: {};", &settings.background)
+					"background: white; /* configuration.background */",
+					&format!("background: {};", &configuration.background)
 				)
 			),
 		);
 
+	let arc_for_window_data = std::sync::Arc::clone(&arc_udata);
 	let main_window = web_view::builder()
 		.title(&window_title)
 		.content(web_view::Content::Html(&html))
 		.size(800, 600)
 		.resizable(true)
 		.debug(show_debug)
-		.user_data(user_data)
+		.user_data(arc_for_window_data)
 		.invoke_handler(|webview, arg| {
-			match serde_json::from_str(arg).unwrap() {
+			if show_debug {
+				println!("DEBUG: receiving {}", &arg);
+			}
+
+			match serde_json::from_str(&arg).unwrap() {
 				instructions::Instruction::Previous => {
 					instructions::Previous(webview, show_debug);
 				}
@@ -262,7 +324,79 @@ fn main() {
 			return Ok(());
 		})
 		.build()
+		.unwrap_or_else(|e| panic!("Can not build main window : {}", e));
+
+	let arc_for_ws = std::sync::Arc::clone(&arc_udata);
+	std::thread::spawn(move || {
+		let port = { arc_for_ws.lock().unwrap().internal_server_port };
+
+		if show_debug {
+			println!(
+				"DEBUG: internal web server will be launched at http://127.0.0.1:{}/",
+				&port
+			);
+		}
+
+		iron::Iron::new(move |req: &mut iron::prelude::Request| {
+			let current = &arc_for_ws.lock().unwrap().get_current();
+
+			let path_requested = format!("{}", req.url);
+			let mut token = format!("http://127.0.0.1:{}/", port);
+			token += &arc_for_ws.lock().unwrap().token;
+
+			if path_requested == token {
+				if show_debug {
+					println!("DEBUG: receiving request to {}", &path_requested);
+				}
+
+				let file = std::fs::read(&current);
+
+				match file {
+					Ok(path) => {
+						let mime = tree_magic::from_u8(&path);
+						let mut res = iron::Response::with((iron::status::Ok, path));
+						res.headers
+							.set_raw("Content-Type", vec![mime.as_bytes().to_vec()]);
+						Ok(res)
+					}
+					Err(e) => {
+						if show_debug {
+							eprintln!("ERROR: can not get file {} because : {}", current, e);
+						}
+
+						match e.kind() {
+							std::io::ErrorKind::NotFound => Err(iron::IronError::new(
+								StringError(String::from("404 : NOT FOUND")),
+								iron::status::Status::NotFound,
+							)),
+							std::io::ErrorKind::PermissionDenied => Err(iron::IronError::new(
+								StringError(String::from("401 : UNAUTHORIZED")),
+								iron::status::Status::Unauthorized,
+							)),
+							_ => Err(iron::IronError::new(
+								StringError(String::from("500 : INTERNAL ERROR")),
+								iron::status::Status::InternalServerError,
+							)),
+						}
+					}
+				}
+			} else {
+				if show_debug {
+					println!(
+						"DEBUG: the token does not match with request {}",
+						&path_requested
+					);
+				}
+
+				Err(iron::IronError::new(
+					StringError(String::from("403 : FORBIDDEN")),
+					iron::status::Status::Forbidden,
+				))
+			}
+		})
+		.http(&format!("127.0.0.1:{}", &port))
 		.unwrap();
+	});
 
 	let mut folders: Vec<String> = vec![];
 	for entry in std::fs::read_dir(&working_folder).unwrap() {
@@ -272,16 +406,18 @@ fn main() {
 		}
 	}
 
-	let handle = main_window.handle();
-	handle
+	let arc_for_dispatch = std::sync::Arc::clone(&arc_udata);
+
+	main_window
+		.handle()
 		.dispatch(move |main_window| {
+			let targets = { arc_for_dispatch.lock().unwrap().targets.clone() };
+			let internal_server_port = { arc_for_dispatch.lock().unwrap().internal_server_port };
+
 			// ****** TARGETS ******
 
 			let mut targets_buffer = String::from("['");
-			targets_buffer += &main_window
-				.user_data()
-				.targets
-				.clone()
+			targets_buffer += &targets
 				.into_iter()
 				.map(|target| target.replace("\\", "\\\\").replace("\'", "\\'"))
 				.collect::<Vec<String>>()
@@ -291,15 +427,6 @@ fn main() {
 			if targets_buffer == "['']" {
 				targets_buffer = String::from("[]");
 			}
-
-			main_window
-				.eval(&format!(
-					"App.remote.receive.set_targets({});",
-					&targets_buffer
-				))
-				.unwrap();
-
-			main_window.eval("App.methods.do_open(false);").unwrap();
 
 			// ****** FOLDERS ******
 
@@ -311,39 +438,20 @@ fn main() {
 				folders_buffer = String::from("[]");
 			}
 
-			main_window
-				.eval(&format!(
-					"App.remote.receive.set_folders({});",
-					&folders_buffer
-				))
-				.unwrap();
+			// ****** sending ******
 
-			// ****** IMAGES COUNT ******
-
-			main_window
-				.eval(&format!(
-					"App.remote.receive.set_images_count({});",
-					&main_window.user_data().images.len()
-				))
-				.unwrap();
-
-			// ****** CURRENT IMAGE ******
-
-			if !main_window.user_data().images.is_empty() {
-				main_window
-					.eval(&format!(
-						"App.remote.receive.set_current({}, '{}');",
-						&main_window.user_data().position,
-						&main_window
-							.user_data()
-							.get_current()
-							.replace("\\", "\\\\")
-							.replace("'", "\\'")
-					))
-					.unwrap();
-			}
-
-			Ok(())
+			main_window.eval(&format!(
+				"STANDALONE_MODE=false;
+				App.data.debug = {};
+				App.data.internal_server_port = {};
+				App.remote.receive.set_targets({});
+				App.methods.do_open(false);
+				App.remote.receive.set_folders({});",
+				if show_debug { "true" } else { "false" },
+				internal_server_port,
+				&targets_buffer,
+				&folders_buffer,
+			))
 		})
 		.unwrap();
 
@@ -358,24 +466,33 @@ fn main() {
 	}
 }
 
+const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz-0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
 #[derive(Clone)]
 struct Image {
 	current: std::path::PathBuf,
 }
 pub struct UserData {
+	internal_server_port: usize,
 	position: usize,
 	images: Vec<Image>,
 	targets: Vec<String>,
+	show_debug: bool,
+	token: String,
 }
 impl UserData {
 	fn get_current(&self) -> String {
-		return String::from(
-			self.images[self.position]
-				.current
-				.as_path()
-				.to_str()
-				.unwrap(),
-		);
+		if !self.images.is_empty() {
+			return String::from(
+				self.images[self.position]
+					.current
+					.as_path()
+					.to_str()
+					.unwrap(),
+			);
+		} else {
+			return String::from("");
+		}
 	}
 
 	fn set_position(&mut self, value: usize) {
@@ -388,7 +505,19 @@ impl UserData {
 			set = 0;
 		}
 
+		let mut token = String::new();
+		let mut rng_limit = rand::thread_rng();
+		for _ in 1..rng_limit.gen_range(32, 64) {
+			let mut rng_item = rand::thread_rng();
+			token.push(ALPHABET.chars().choose(&mut rng_item).unwrap());
+		}
+
+		if self.show_debug {
+			println!("DEBUG: new token is {}", token);
+		}
+
 		self.position = set;
+		self.token = token;
 	}
 
 	fn previous(&mut self) {
@@ -438,13 +567,26 @@ impl UserData {
 }
 
 #[derive(Debug, serde_derive::Deserialize, serde_derive::Serialize)]
-struct Settings {
+struct Configuration {
 	background: String,
 }
-impl Default for Settings {
-	fn default() -> Settings {
-		Settings {
+impl Default for Configuration {
+	fn default() -> Configuration {
+		Configuration {
 			background: String::from("#FFFFFF"),
 		}
+	}
+}
+
+#[derive(Debug)]
+struct StringError(String);
+impl std::fmt::Display for StringError {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		std::fmt::Debug::fmt(self, f)
+	}
+}
+impl std::error::Error for StringError {
+	fn description(&self) -> &str {
+		&*self.0
 	}
 }

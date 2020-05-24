@@ -7,7 +7,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>fractus-atlas</title>
 
-	<link rel="stylesheet" href="./main.css">
+	<link rel="stylesheet" href="main.css">
 
 </head>
 
@@ -27,7 +27,7 @@
 	<button onclick="App.remote.send('Previous')" id="main_previous" title="go to previous image">⬅</button>
 
 	<article>
-		<img src="" id="image" alt="image" style="display: none;" onerror="App.methods.image_not_found_error();" />
+		<img src="" id="image" alt="image" style="display: none;" />
 		<p id="no-images-error">
 			❌ There is no images in this targets.<br>
 			<button onclick="App.methods.toggle_open_window()" style="margin-top: 0.5em;">📂 Open other(s) folder(s)</button>
@@ -42,7 +42,7 @@
 	<button onclick="App.remote.send('Next')" id="main_next" title="go to next image">➡</button>
 
 	<div id="move_window" class="popup_window" style="display: none;">
-		<input type="search" id="move_search" />
+		<input type="text" id="move_search" />
 		<p>Move current image in selected folder :</p>
 		<div id="move_search_results"></div>
 		<div class="window_actions">
@@ -60,7 +60,7 @@
 		</div>
 	</div>
 
-	<script src="./main.js"></script>
+	<script src="main.js"></script>
 
 </body>
 
