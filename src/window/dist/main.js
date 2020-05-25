@@ -184,7 +184,7 @@ let App = {
 		},
 		do_move: function () {
 			App.remote.send({
-				instruction: 'Move',
+				instruction: 'DoMove',
 				into: App.data.selected_folder.get()
 			});
 		},
