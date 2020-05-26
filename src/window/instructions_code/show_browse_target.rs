@@ -10,44 +10,40 @@ pub fn show_browse_target(
 			if let Some(path) = tinyfiledialogs::select_folder_dialog(
 				"📂 Browse to folder ...",
 				&dunce::canonicalize(local_user_data.targets[id].clone())
-					.unwrap()
+					.unwrap_or_default()
 					.as_path()
 					.to_str()
-					.unwrap(),
+					.unwrap_or_default(),
 			) {
 				local_user_data.targets[id] = path;
 			}
 		} else if let Some(path) = tinyfiledialogs::select_folder_dialog(
 			"📂 Browse to folder ...",
-			&dunce::canonicalize(".")
-				.unwrap()
+			&dunce::canonicalize("")
+				.unwrap_or_default()
 				.as_path()
 				.to_str()
-				.unwrap(),
+				.unwrap_or_default(),
 		) {
 			local_user_data.targets.push(path);
 		}
 
-		let mut targets_buffer = String::from("['");
+		let mut targets_buffer = String::from("[");
 		targets_buffer += &local_user_data
 			.targets
 			.clone()
 			.into_iter()
-			.map(|target| target.replace("\\", "\\\\").replace("\'", "\\'"))
+			.map(|target| format!("{}", web_view::escape(&target)))
 			.collect::<Vec<String>>()
-			.join("','");
-		targets_buffer += "']";
-
-		if targets_buffer == "['']" {
-			targets_buffer = String::from("[]");
-		}
+			.join(",");
+		targets_buffer += "]";
 
 		format!("App.remote.receive.set_targets({});", &targets_buffer)
 	};
 
 	if show_debug {
 		println!(
-			"sending `{}` to view from ShowBrowseTarget()",
+			"DEBUG: sending\n```js\n{}\n```\nto view from show_browse_target()\n",
 			&js_instruction
 		);
 	}

@@ -1,5 +1,3 @@
-use serde_derive::*;
-
 mod browse_target_folders;
 mod do_move;
 mod next;
@@ -16,7 +14,7 @@ pub use random::random;
 pub use set_position::set_position;
 pub use show_browse_target::show_browse_target;
 
-#[derive(Deserialize)]
+#[derive(serde_derive::Deserialize)]
 #[serde(tag = "instruction", rename_all = "PascalCase")]
 pub enum Instruction {
 	Previous,

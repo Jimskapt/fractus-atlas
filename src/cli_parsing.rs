@@ -9,14 +9,15 @@ pub struct CliInstructions {
 }
 impl Default for CliInstructions {
 	fn default() -> Self {
-		let mut working_folder = std::path::PathBuf::new();
-		working_folder.push(String::from(env!("CARGO_PKG_NAME")).to_lowercase());
+		let working_folder =
+			std::path::PathBuf::from(String::from(env!("CARGO_PKG_NAME")).to_lowercase());
 
 		let mut configuration_path = working_folder.clone();
 		configuration_path.push("conf.toml");
 
-		let working_folder = String::from(working_folder.as_path().to_str().unwrap());
-		let configuration_path = String::from(configuration_path.as_path().to_str().unwrap());
+		let working_folder = String::from(working_folder.as_path().to_str().unwrap_or_default());
+		let configuration_path =
+			String::from(configuration_path.as_path().to_str().unwrap_or_default());
 
 		/*
 		let default_exclude = format!(
@@ -44,6 +45,7 @@ impl CliInstructions {
 		let working_folder = result.working_folder;
 		let filter = result.filter;
 		let sort = result.sort;
+		let configuration_path = result.configuration_path;
 
 		let app = clap::App::new(env!("CARGO_PKG_NAME"))
 			.version(env!("CARGO_PKG_VERSION"))
@@ -63,7 +65,7 @@ impl CliInstructions {
 				clap::Arg::with_name("debug")
 					.short("d")
 					.long("debug")
-					.help("If set, show maximum debug informations")
+					.help("If set, show maximum debug information")
 					.takes_value(false)
 					.required(false),
 			)
@@ -103,7 +105,7 @@ impl CliInstructions {
 					.takes_value(true)
 					.required(false)
 					.env(crate::CONFIGURATION_ENV_NAME)
-					.default_value(&result.configuration_path),
+					.default_value(&configuration_path),
 			);
 		/*
 		.arg(
@@ -143,15 +145,23 @@ impl CliInstructions {
 		// TODO : support for multiple paths like `/home/user/{folder1,folder2}/src/`
 		result.targets = matches
 			.value_of("TARGETS")
-			.unwrap()
+			.unwrap_or_default()
 			.split(',')
 			.map(|i| String::from(i.trim()))
 			.collect();
 
-		result.filter = String::from(matches.value_of("filter").unwrap());
-		result.working_folder = String::from(matches.value_of("working_folder").unwrap());
-		result.sort = String::from(matches.value_of("sort").unwrap());
-		result.configuration_path = String::from(matches.value_of("config_file_path").unwrap());
+		result.filter = String::from(matches.value_of("filter").unwrap_or(&filter));
+		result.working_folder = String::from(
+			matches
+				.value_of("working_folder")
+				.unwrap_or(&working_folder),
+		);
+		result.sort = String::from(matches.value_of("sort").unwrap_or(&sort));
+		result.configuration_path = String::from(
+			matches
+				.value_of("config_file_path")
+				.unwrap_or(&configuration_path),
+		);
 
 		if result.debug {
 			println!("DEBUG: debug mode activated");
@@ -163,7 +173,7 @@ impl CliInstructions {
 			println!();
 		}
 
-		let working_folder = std::path::PathBuf::from(result.working_folder);
+		let working_folder = std::path::Path::new(&result.working_folder);
 		if !working_folder.exists() {
 			println!(
 				"DEBUG: working folder {:?} does not exists, attempting to create it",
@@ -181,10 +191,10 @@ impl CliInstructions {
 
 		result.working_folder = String::from(
 			dunce::canonicalize(working_folder)
-				.unwrap()
+				.unwrap_or_default()
 				.as_path()
 				.to_str()
-				.unwrap(),
+				.unwrap_or_default(),
 		);
 
 		return result;

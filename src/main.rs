@@ -1,5 +1,5 @@
 // TODO : translations ?
-// TODO : better error handling (search for `unwrap`)
+// TODO : fix preload & tokens rolling
 
 #![allow(clippy::needless_return)]
 
@@ -16,6 +16,8 @@ mod webserver;
 mod window;
 
 fn main() {
+	human_panic::setup_panic!();
+
 	let instructions = cli_parsing::CliInstructions::new();
 	let configuration = configuration::Configuration::from(&instructions);
 
@@ -33,7 +35,7 @@ fn main() {
 	webserver::run(instructions.clone(), std::sync::Arc::clone(&arc_user_data));
 	window::run(
 		instructions.clone(),
-		&configuration,
+		configuration,
 		std::sync::Arc::clone(&arc_user_data),
 	);
 
@@ -41,15 +43,5 @@ fn main() {
 		println!("DEBUG: end of program");
 	}
 }
-
-/* USELESS ?
-let mut folders: Vec<String> = vec![];
-for entry in std::fs::read_dir(&working_folder).unwrap() {
-	let path = entry.unwrap().path();
-	if path.is_dir() {
-		folders.push(String::from(path.file_name().unwrap().to_str().unwrap()));
-	}
-}
-*/
 
 const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz-0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ";

@@ -2,7 +2,7 @@ mod instructions_code;
 
 pub fn run(
 	instructions: crate::cli_parsing::CliInstructions,
-	configuration: &crate::configuration::Configuration,
+	configuration: crate::configuration::Configuration,
 	user_data: std::sync::Arc<std::sync::Mutex<crate::user_data::UserData>>,
 ) {
 	let window_title = format!("{} V{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
@@ -16,10 +16,7 @@ pub fn run(
 			r#"<link rel="stylesheet" href="main.css">"#,
 			&format!(
 				"<style type=\"text/css\">{}</style>",
-				include_str!("dist/main.css").replace(
-					"background: white; /* configuration.background */",
-					&format!("background: {};", &configuration.background)
-				)
+				include_str!("dist/main.css")
 			),
 		);
 
@@ -104,30 +101,35 @@ pub fn run(
 	main_window
 		.handle()
 		.dispatch(move |main_window| {
-			let targets = { arc_for_dispatch.lock().unwrap().targets.clone() };
-			let internal_server_port = { arc_for_dispatch.lock().unwrap().internal_server_port };
+			let targets = arc_for_dispatch.lock().unwrap().targets.clone();
+			let internal_server_port = arc_for_dispatch.lock().unwrap().internal_server_port;
 
 			// ****** TARGETS ******
 
-			let mut targets_buffer = String::from("['");
+			let mut targets_buffer = String::from("[");
 			targets_buffer += &targets
 				.into_iter()
-				.map(|target| target.replace("\\", "\\\\").replace("\'", "\\'"))
+				.map(|target| format!("{}", web_view::escape(&target)))
 				.collect::<Vec<String>>()
-				.join("','");
-			targets_buffer += "']";
-
-			if targets_buffer == "['']" {
-				targets_buffer = String::from("[]");
-			}
+				.join(",");
+			targets_buffer += "]";
 
 			// ****** FOLDERS ******
 
 			let mut folders: Vec<String> = vec![];
-			for entry in std::fs::read_dir(&instructions_for_dispatch.working_folder).unwrap() {
-				let path = entry.unwrap().path();
-				if path.is_dir() {
-					folders.push(String::from(path.file_name().unwrap().to_str().unwrap()));
+			if let Ok(childs) = std::fs::read_dir(&instructions_for_dispatch.working_folder) {
+				for entry in childs {
+					if let Ok(entry) = entry {
+						let path = entry.path();
+						if path.is_dir() {
+							folders.push(String::from(
+								path.file_name()
+									.unwrap_or_default()
+									.to_str()
+									.unwrap_or_default(),
+							));
+						}
+					}
 				}
 			}
 
@@ -143,11 +145,12 @@ pub fn run(
 
 			main_window.eval(&format!(
 				"STANDALONE_MODE=false;
-				App.data.debug = {};
-				App.data.internal_server_port = {};
-				App.remote.receive.set_targets({});
-				App.methods.do_open(false);
-				App.remote.receive.set_folders({});",
+App.data.debug = {};
+App.data.internal_server_port = {};
+App.remote.receive.set_targets({});
+App.methods.do_open(false);
+App.remote.receive.set_folders({});
+document.body.style.background = {};",
 				if instructions_for_dispatch.debug {
 					"true"
 				} else {
@@ -156,6 +159,7 @@ pub fn run(
 				internal_server_port,
 				&targets_buffer,
 				&folders_buffer,
+				web_view::escape(&configuration.background),
 			))
 		})
 		.unwrap();

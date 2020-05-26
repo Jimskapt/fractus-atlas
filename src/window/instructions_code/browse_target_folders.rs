@@ -13,60 +13,70 @@ pub fn browse_target_folders(
 
 		let mut images: Vec<crate::user_data::Image> = vec![];
 		for root in &folders {
-			let mut temp: Vec<crate::user_data::Image> = std::fs::read_dir(root)
-				.unwrap()
-				.map(|i| {
-					let path = dunce::canonicalize(i.unwrap().path()).unwrap();
+			match std::fs::read_dir(root) {
+				Ok(folder) => {
+					images.append(
+						&mut folder
+							.map(|i| crate::user_data::Image {
+								current: dunce::canonicalize(i.unwrap().path()).unwrap_or_default(),
+							})
+							.filter(|i| {
+								if i.current.is_file() {
+									if let Some(name) = i.current.file_name() {
+										match name.to_str() {
+											Some(file_name) => {
+												if file_regex.is_match(file_name) {
+													if show_debug {
+														println!(
+															"DEBUG: adding file {:?}",
+															file_name
+														);
+													}
 
-					crate::user_data::Image { current: path }
-				})
-				.filter(|i| {
-					if i.current.is_file() {
-						if let Some(name) = i.current.file_name() {
-							match name.to_str() {
-								Some(file_name) => {
-									if file_regex.is_match(file_name) {
-										if show_debug {
-											println!("DEBUG: adding file {:?}", file_name);
+													return true;
+												} else {
+													if show_debug {
+														println!(
+												"DEBUG: file {:?} does not match file filter regex",
+												file_name
+											);
+													}
+													return false;
+												}
+											}
+											None => {
+												if show_debug {
+													println!(
+											"DEBUG: can not get UTF-8 file name of {:?}",
+											name
+										);
+												}
+												return false;
+											}
 										}
-
-										return true;
 									} else {
 										if show_debug {
 											println!(
-												"DEBUG: file {:?} does not match file filter regex",
-												file_name
+												"DEBUG: can not get file name of {:?}",
+												i.current
 											);
 										}
 										return false;
 									}
-								}
-								None => {
+								} else {
 									if show_debug {
-										println!(
-											"DEBUG: can not get UTF-8 file name of {:?}",
-											name
-										);
+										println!("DEBUG: {:?} is not a file", i.current);
 									}
 									return false;
 								}
-							}
-						} else {
-							if show_debug {
-								println!("DEBUG: can not get file name of {:?}", i.current);
-							}
-							return false;
-						}
-					} else {
-						if show_debug {
-							println!("DEBUG: {:?} is not a file", i.current);
-						}
-						return false;
-					}
-				})
-				.collect();
-
-			images.append(&mut temp);
+							})
+							.collect::<Vec<crate::user_data::Image>>(),
+					);
+				}
+				Err(e) => {
+					eprintln!("ERROR: can not read folder {} : {}", &root, e);
+				}
+			}
 		}
 
 		if show_debug {
@@ -96,7 +106,6 @@ pub fn browse_target_folders(
 		}
 
 		if show_debug {
-			println!();
 			println!("DEBUG: end of sorting found files");
 		}
 
@@ -106,20 +115,17 @@ pub fn browse_target_folders(
 
 		format!(
 			"App.remote.receive.set_images_count({});
-			App.remote.receive.set_current({}, '{}', '{}');",
+App.remote.receive.set_current({}, {}, {});",
 			&local_user_data.images.len(),
 			&local_user_data.position,
-			&local_user_data
-				.get_current()
-				.replace("\\", "\\\\")
-				.replace("'", "\\'"),
-			&local_user_data.token
+			web_view::escape(&local_user_data.get_current()),
+			web_view::escape(&local_user_data.token)
 		)
 	};
 
 	if show_debug {
 		println!(
-			"sending `{}` to view from BrowseTargetFolders()",
+			"DEBUG: sending\n```js\n{}\n```\nto view from browse_target_folders()\n",
 			&js_instruction
 		);
 	}
@@ -130,7 +136,7 @@ pub fn browse_target_folders(
 
 		if show_debug {
 			println!(
-				"sending `{}` to view from BrowseTargetFolders()",
+				"DEBUG: sending\n```js\n{}\n```\nto view from browse_target_folders()\n",
 				&js_instruction
 			);
 		}

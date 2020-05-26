@@ -13,7 +13,7 @@ impl std::convert::From<&crate::cli_parsing::CliInstructions> for Configuration 
 	fn from(instructions: &crate::cli_parsing::CliInstructions) -> Self {
 		let mut result = Configuration::default();
 
-		let configuration_path = std::path::PathBuf::from(&instructions.configuration_path);
+		let configuration_path = std::path::Path::new(&instructions.configuration_path);
 
 		if configuration_path.exists() {
 			let configuration = std::fs::read_to_string(&instructions.configuration_path);
@@ -47,18 +47,19 @@ impl std::convert::From<&crate::cli_parsing::CliInstructions> for Configuration 
 
 			if let Some(folder) = &configuration_path.parent() {
 				match std::fs::create_dir_all(folder) {
-					Ok(_) => match std::fs::write(
-						&instructions.configuration_path,
-						toml::to_vec(&result).unwrap(),
-					) {
-						Ok(_) => {}
-						Err(e) => {
-							println!(
-								"INFO: can not create file {:?} (this is not fatal) : {}",
-								&instructions.configuration_path, e
-							);
+					Ok(_) => {
+						if let Ok(bytes) = toml::to_vec(&result) {
+							match std::fs::write(&instructions.configuration_path, bytes) {
+								Ok(_) => {}
+								Err(e) => {
+									println!(
+										"INFO: can not create file {:?} (this is not fatal) : {}",
+										&instructions.configuration_path, e
+									);
+								}
+							}
 						}
-					},
+					}
 					Err(e) => {
 						println!(
 							"INFO: can not create folder {:?} (this is not fatal) : {}",

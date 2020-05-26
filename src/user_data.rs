@@ -21,7 +21,7 @@ impl UserData {
 					.current
 					.as_path()
 					.to_str()
-					.unwrap(),
+					.unwrap_or_default(),
 			);
 		} else {
 			return String::from("");
@@ -76,7 +76,13 @@ impl UserData {
 			self.position + 1
 		};
 
-		return String::from(self.images[pos].current.as_path().to_str().unwrap());
+		return String::from(
+			self.images[pos]
+				.current
+				.as_path()
+				.to_str()
+				.unwrap_or_default(),
+		);
 	}
 
 	pub fn get_previous(&self) -> String {
@@ -86,7 +92,13 @@ impl UserData {
 			self.position - 1
 		};
 
-		return String::from(self.images[pos].current.as_path().to_str().unwrap());
+		return String::from(
+			self.images[pos]
+				.current
+				.as_path()
+				.to_str()
+				.unwrap_or_default(),
+		);
 	}
 
 	pub fn random(&mut self) {

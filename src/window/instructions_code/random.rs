@@ -7,28 +7,22 @@ pub fn random(
 		local_user_data.random();
 
 		format!(
-			"App.remote.receive.set_current({}, '{}', '{}');
-			App.remote.receive.preload('{}');
-			App.remote.receive.preload('{}');",
+			"App.remote.receive.set_current({}, {}, {});
+App.remote.receive.preload({});
+App.remote.receive.preload({});",
 			&local_user_data.position,
-			&local_user_data
-				.get_current()
-				.replace("\\", "\\\\")
-				.replace("'", "\\'"),
-			&local_user_data.token,
-			&local_user_data
-				.get_next()
-				.replace("\\", "\\\\")
-				.replace("'", "\\'"),
-			&local_user_data
-				.get_previous()
-				.replace("\\", "\\\\")
-				.replace("'", "\\'")
+			web_view::escape(&local_user_data.get_current()),
+			web_view::escape(&local_user_data.token),
+			web_view::escape(&local_user_data.get_next()),
+			web_view::escape(&local_user_data.get_previous())
 		)
 	};
 
 	if show_debug {
-		println!("sending `{}` to view from Random()", &js_instruction);
+		println!(
+			"DEBUG: sending\n```js\n{}\n```\nto view from random()\n",
+			&js_instruction
+		);
 	}
 	webview.eval(&js_instruction).unwrap();
 }
