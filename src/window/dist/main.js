@@ -235,19 +235,14 @@ let App = {
 				App.data.folders = value;
 				App.methods.refresh_folders_result(document.getElementById('move_search').value);
 			},
-			set_current: function (position, path, token) {
+			set_active: function (position, path, token) {
 				App.data.position = position;
 				App.data.current_image = path;
 				App.data.internal_server_token = token;
 				App.methods.refresh_image();
 			},
-			preload: function (path) {
-				let preloadLink = document.createElement("link");
-				// TODO : internal_server
-				preloadLink.href = 'file:///' + path;
-				preloadLink.rel = "preload";
-				preloadLink.as = "image";
-				document.head.appendChild(preloadLink);
+			preload: function (token) {
+				(new Image()).src = 'http://127.0.0.1:' + App.data.internal_server_port + '/' + token;
 			},
 			set_targets: function (targets) {
 

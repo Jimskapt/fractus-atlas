@@ -2,27 +2,16 @@ pub fn random(
 	webview: &mut web_view::WebView<std::sync::Arc<std::sync::Mutex<crate::user_data::UserData>>>,
 	show_debug: bool,
 ) {
-	let js_instruction = {
+	let js_instructions: String = {
 		let mut local_user_data = webview.user_data_mut().lock().unwrap();
-		local_user_data.random();
+		local_user_data.go_to_random();
 
-		format!(
-			"App.remote.receive.set_current({}, {}, {});
-App.remote.receive.preload({});
-App.remote.receive.preload({});",
-			&local_user_data.position,
-			web_view::escape(&local_user_data.get_current()),
-			web_view::escape(&local_user_data.token),
-			web_view::escape(&local_user_data.get_next()),
-			web_view::escape(&local_user_data.get_previous())
-		)
+		let mut result = String::new();
+		result += &local_user_data.get_js_set_active();
+		result += &local_user_data.get_js_preloads();
+
+		result
 	};
 
-	if show_debug {
-		println!(
-			"DEBUG: sending\n```js\n{}\n```\nto view from random()\n",
-			&js_instruction
-		);
-	}
-	webview.eval(&js_instruction).unwrap();
+	crate::window::run_js(webview, &js_instructions, show_debug).unwrap();
 }

@@ -11,88 +11,89 @@ pub fn do_move(
 
 	{
 		let mut local_user_data = webview.user_data_mut().lock().unwrap();
-		let image = local_user_data.images.get(local_user_data.position);
+		if let Some(position) = local_user_data.position {
+			let image = local_user_data.images.get(position);
 
-		match image {
-			Some(image) => {
-				let mut new_path = working_folder.clone();
-				new_path.push(&into);
-				new_path.push(image.current.as_path().file_name().unwrap_or_default());
-
-				while new_path.exists() {
-					new_path = working_folder.clone();
+			match image {
+				Some(image) => {
+					let mut new_path = working_folder.clone();
 					new_path.push(&into);
+					new_path.push(image.current.as_path().file_name().unwrap_or_default());
 
-					let mut new_name = String::from(
-						image
+					while new_path.exists() {
+						new_path = working_folder.clone();
+						new_path.push(&into);
+
+						let mut new_name = String::from(
+							image
+								.current
+								.as_path()
+								.file_stem()
+								.unwrap_or_default()
+								.to_str()
+								.unwrap_or_default(),
+						);
+						new_name += "-fa_";
+
+						let mut rng_limit = rand::thread_rng();
+						for _ in 1..rng_limit.gen_range(6, 12) {
+							let mut rng_item = rand::thread_rng();
+							new_name.push(crate::ALPHABET.chars().choose(&mut rng_item).unwrap());
+						}
+
+						new_name += ".";
+						new_name += image
 							.current
 							.as_path()
-							.file_stem()
+							.extension()
 							.unwrap_or_default()
 							.to_str()
-							.unwrap_or_default(),
-					);
-					new_name += "-fa_";
+							.unwrap_or_default();
 
-					let mut rng_limit = rand::thread_rng();
-					for _ in 1..rng_limit.gen_range(6, 12) {
-						let mut rng_item = rand::thread_rng();
-						new_name.push(crate::ALPHABET.chars().choose(&mut rng_item).unwrap());
+						new_path.push(new_name);
 					}
 
-					new_name += ".";
-					new_name += image
-						.current
-						.as_path()
-						.extension()
-						.unwrap_or_default()
-						.to_str()
-						.unwrap_or_default();
-
-					new_path.push(new_name);
-				}
-
-				if show_debug {
-					println!(
-						"DEBUG: attempting to move {:?} in {:?}",
-						&image.current, &new_path
-					);
-				}
-
-				if let Some(folder) = new_path.parent() {
-					std::fs::create_dir_all(folder).unwrap();
-				}
-
-				if std::fs::copy(&image.current, &new_path).is_err() {
-					println!(
-						"INFO: can not copy file {:?} to {:?}",
-						&image.current, &new_path
-					);
-				} else {
 					if show_debug {
 						println!(
-							"DEBUG: file {:?} successfully copied to {:?}",
+							"DEBUG: attempting to move {:?} in {:?}",
 							&image.current, &new_path
 						);
 					}
 
-					if trash::remove(&image.current).is_err() {
-						println!(
-							"INFO: can not move file {:?} to trash (after copied it)",
-							&image.current
-						);
-					} else if show_debug {
-						println!(
-							"DEBUG: file {:?} moved to trash (after copied it)",
-							&image.current
-						);
+					if let Some(folder) = new_path.parent() {
+						std::fs::create_dir_all(folder).unwrap();
 					}
-				}
 
-				let pos = local_user_data.position;
-				local_user_data.images[pos].current = new_path;
+					if std::fs::copy(&image.current, &new_path).is_err() {
+						println!(
+							"INFO: can not copy file {:?} to {:?}",
+							&image.current, &new_path
+						);
+					} else {
+						if show_debug {
+							println!(
+								"DEBUG: file {:?} successfully copied to {:?}",
+								&image.current, &new_path
+							);
+						}
+
+						if trash::remove(&image.current).is_err() {
+							println!(
+								"INFO: can not move file {:?} to trash (after copied it)",
+								&image.current
+							);
+						} else if show_debug {
+							println!(
+								"DEBUG: file {:?} moved to trash (after copied it)",
+								&image.current
+							);
+						}
+					}
+
+					local_user_data.images[position].current = new_path;
+				}
+				None => eprintln!("ERROR: can not get image information in order to move it"),
 			}
-			None => eprintln!("ERROR: can not get image information in order to move it"),
 		}
 	}
 
@@ -121,18 +122,12 @@ pub fn do_move(
 		folders_buffer = String::from("[]");
 	}
 
-	let js_instruction = format!(
+	let js_instructions = format!(
 		"App.remote.send('Next');
 App.methods.toggle_move_window();
 App.remote.receive.set_folders({});",
 		&folders_buffer
 	);
 
-	if show_debug {
-		println!(
-			"DEBUG: sending\n```js\n{}\n```\nto view from do_move()\n",
-			&js_instruction
-		);
-	}
-	webview.eval(&js_instruction).unwrap();
+	crate::window::run_js(webview, &js_instructions, show_debug).unwrap();
 }

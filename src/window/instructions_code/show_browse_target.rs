@@ -41,11 +41,5 @@ pub fn show_browse_target(
 		format!("App.remote.receive.set_targets({});", &targets_buffer)
 	};
 
-	if show_debug {
-		println!(
-			"DEBUG: sending\n```js\n{}\n```\nto view from show_browse_target()\n",
-			&js_instruction
-		);
-	}
-	webview.eval(&js_instruction).unwrap();
+	crate::window::run_js(webview, &js_instruction, show_debug).unwrap();
 }

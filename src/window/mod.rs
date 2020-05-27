@@ -97,6 +97,7 @@ pub fn run(
 
 	let arc_for_dispatch = std::sync::Arc::clone(&user_data);
 	let instructions_for_dispatch = instructions.clone();
+	let debug = instructions.debug;
 
 	main_window
 		.handle()
@@ -143,13 +144,17 @@ pub fn run(
 
 			// ****** sending ******
 
-			main_window.eval(&format!(
+			let js_instructions: String = format!(
 				"STANDALONE_MODE=false;
+
 App.data.debug = {};
 App.data.internal_server_port = {};
+
 App.remote.receive.set_targets({});
-App.methods.do_open(false);
 App.remote.receive.set_folders({});
+
+App.methods.do_open(false);
+
 document.body.style.background = {};",
 				if instructions_for_dispatch.debug {
 					"true"
@@ -160,13 +165,30 @@ document.body.style.background = {};",
 				&targets_buffer,
 				&folders_buffer,
 				web_view::escape(&configuration.background),
-			))
+			);
+
+			run_js(main_window, &js_instructions, debug)
 		})
 		.unwrap();
 
-	if instructions.debug {
+	if debug {
 		println!("DEBUG: running web_view window");
 	}
 
 	main_window.run().unwrap();
+}
+
+pub fn run_js(
+	webview: &mut web_view::WebView<std::sync::Arc<std::sync::Mutex<crate::user_data::UserData>>>,
+	js_instructions: &str,
+	show_debug: bool,
+) -> web_view::WVResult {
+	if !js_instructions.is_empty() {
+		if show_debug {
+			println!("DEBUG: sending\n```js\n{}\n```\n", &js_instructions);
+		}
+		webview.eval(&js_instructions)
+	} else {
+		Ok(())
+	}
 }

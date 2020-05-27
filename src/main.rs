@@ -1,5 +1,9 @@
-// TODO : translations ?
-// TODO : fix preload & tokens rolling
+/* TODO :
+- translations ?
+- fix preload & tokens rolling
+- can move back after move
+- open current file in external
+*/
 
 #![allow(clippy::needless_return)]
 
@@ -24,11 +28,10 @@ fn main() {
 	let mut rng = rand::thread_rng();
 	let user_data = user_data::UserData {
 		internal_server_port: rng.gen_range(1024, 65535),
-		position: 0,
+		position: None,
 		images: vec![],
 		targets: instructions.targets.clone(),
 		debug: instructions.debug,
-		token: String::new(),
 	};
 	let arc_user_data: Arc<Mutex<user_data::UserData>> = Arc::new(Mutex::new(user_data));
 

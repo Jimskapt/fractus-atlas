@@ -3,34 +3,17 @@ pub fn set_position(
 	show_debug: bool,
 	value: usize,
 ) {
-	let js_instruction = {
+	let js_instructions: String = {
 		let mut local_user_data = webview.user_data_mut().lock().unwrap();
 
-		let new_value = if value > local_user_data.images.len() {
-			local_user_data.images.len() - 1
-		} else {
-			value
-		};
+		local_user_data.set_position(value);
 
-		local_user_data.set_position(new_value);
+		let mut result = String::new();
+		result += &local_user_data.get_js_set_active();
+		result += &local_user_data.get_js_preloads();
 
-		format!(
-			"App.remote.receive.set_current({}, {}, {});
-App.remote.receive.preload({});
-App.remote.receive.preload({});",
-			&local_user_data.position,
-			web_view::escape(&local_user_data.get_current()),
-			web_view::escape(&local_user_data.token),
-			web_view::escape(&local_user_data.get_next()),
-			web_view::escape(&local_user_data.get_previous())
-		)
+		result
 	};
 
-	if show_debug {
-		println!(
-			"DEBUG: sending\n```js\n{}\n```\nto view from set_position()\n",
-			&js_instruction
-		);
-	}
-	webview.eval(&js_instruction).unwrap();
+	crate::window::run_js(webview, &js_instructions, show_debug).unwrap();
 }

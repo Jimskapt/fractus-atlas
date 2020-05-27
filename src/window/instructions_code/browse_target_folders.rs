@@ -6,7 +6,7 @@ pub fn browse_target_folders(
 	folders: Vec<String>,
 	toggle_window: bool,
 ) {
-	let js_instruction = {
+	let mut js_instructions = {
 		if show_debug {
 			println!("DEBUG: starting searching in targets");
 		}
@@ -17,8 +17,10 @@ pub fn browse_target_folders(
 				Ok(folder) => {
 					images.append(
 						&mut folder
-							.map(|i| crate::user_data::Image {
-								current: dunce::canonicalize(i.unwrap().path()).unwrap_or_default(),
+							.map(|i| {
+								crate::user_data::Image::from(
+									dunce::canonicalize(i.unwrap().path()).unwrap_or_default(),
+								)
 							})
 							.filter(|i| {
 								if i.current.is_file() {
@@ -113,33 +115,19 @@ pub fn browse_target_folders(
 		local_user_data.images = images;
 		local_user_data.set_position(0);
 
-		format!(
-			"App.remote.receive.set_images_count({});
-App.remote.receive.set_current({}, {}, {});",
-			&local_user_data.images.len(),
-			&local_user_data.position,
-			web_view::escape(&local_user_data.get_current()),
-			web_view::escape(&local_user_data.token)
-		)
+		let mut result = format!(
+			"App.remote.receive.set_images_count({});\n",
+			&local_user_data.images.len()
+		);
+
+		result += &local_user_data.get_js_set_active();
+
+		result
 	};
 
-	if show_debug {
-		println!(
-			"DEBUG: sending\n```js\n{}\n```\nto view from browse_target_folders()\n",
-			&js_instruction
-		);
-	}
-	webview.eval(&js_instruction).unwrap();
-
 	if toggle_window {
-		let js_instruction = "App.methods.toggle_open_window();";
-
-		if show_debug {
-			println!(
-				"DEBUG: sending\n```js\n{}\n```\nto view from browse_target_folders()\n",
-				&js_instruction
-			);
-		}
-		webview.eval(&js_instruction).unwrap();
+		js_instructions += "App.methods.toggle_open_window();";
 	}
+
+	crate::window::run_js(webview, &js_instructions, show_debug).unwrap();
 }

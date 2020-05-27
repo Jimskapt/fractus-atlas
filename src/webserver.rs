@@ -13,59 +13,84 @@ pub fn run(
 
 	std::thread::spawn(move || {
 		iron::Iron::new(move |req: &mut iron::prelude::Request| {
-			let current = &user_data.lock().unwrap().get_current();
+			if !user_data.lock().unwrap().images.is_empty() {
+				let path_requested = format!("{}", req.url);
+				let allowed: Vec<crate::user_data::Image> = {
+					let local_user_data = user_data.lock().unwrap();
 
-			let path_requested = format!("{}", req.url);
-			let mut token = format!("http://127.0.0.1:{}/", port);
-			token += &user_data.lock().unwrap().token;
-
-			if path_requested == token {
-				if instructions.debug {
-					println!("DEBUG: receiving request to {}", &path_requested);
-				}
-
-				let file = std::fs::read(&current);
-
-				match file {
-					Ok(path) => {
-						let mime = tree_magic::from_u8(&path);
-						let mut res = iron::Response::with((iron::status::Ok, path));
-						res.headers
-							.set_raw("Content-Type", vec![mime.as_bytes().to_vec()]);
-						Ok(res)
+					let mut result = vec![];
+					if let Some(image) = local_user_data.get_active() {
+						result.push(image);
 					}
-					Err(e) => {
-						if instructions.debug {
-							eprintln!("ERROR: can not get file {} because : {}", current, e);
-						}
+					if let Some(image) = local_user_data.get_previous() {
+						result.push(image);
+					}
+					if let Some(image) = local_user_data.get_next() {
+						result.push(image);
+					}
 
-						match e.kind() {
-							std::io::ErrorKind::NotFound => Err(iron::IronError::new(
-								StringError(String::from("404 : NOT FOUND")),
-								iron::status::Status::NotFound,
-							)),
-							std::io::ErrorKind::PermissionDenied => Err(iron::IronError::new(
-								StringError(String::from("401 : UNAUTHORIZED")),
-								iron::status::Status::Unauthorized,
-							)),
-							_ => Err(iron::IronError::new(
-								StringError(String::from("500 : INTERNAL ERROR")),
-								iron::status::Status::InternalServerError,
-							)),
+					result
+				};
+
+				let search = allowed
+					.into_iter()
+					.filter(|i| path_requested == format!("http://127.0.0.1:{}/{}", port, i.token))
+					.collect::<Vec<crate::user_data::Image>>();
+
+				if !search.is_empty() {
+					if instructions.debug {
+						println!("DEBUG: receiving request to {}", &path_requested);
+					}
+
+					let path = &search.first().unwrap().current;
+					let file = std::fs::read(&path);
+
+					match file {
+						Ok(path) => {
+							let mime = tree_magic::from_u8(&path);
+							let mut res = iron::Response::with((iron::status::Ok, path));
+							res.headers
+								.set_raw("Content-Type", vec![mime.as_bytes().to_vec()]);
+							Ok(res)
+						}
+						Err(e) => {
+							if instructions.debug {
+								eprintln!("ERROR: can not get file {:?} because : {}", path, e);
+							}
+
+							match e.kind() {
+								std::io::ErrorKind::NotFound => Err(iron::IronError::new(
+									StringError(String::from("404 : NOT FOUND")),
+									iron::status::Status::NotFound,
+								)),
+								std::io::ErrorKind::PermissionDenied => Err(iron::IronError::new(
+									StringError(String::from("401 : UNAUTHORIZED")),
+									iron::status::Status::Unauthorized,
+								)),
+								_ => Err(iron::IronError::new(
+									StringError(String::from("500 : INTERNAL ERROR")),
+									iron::status::Status::InternalServerError,
+								)),
+							}
 						}
 					}
+				} else {
+					if instructions.debug {
+						println!(
+							"DEBUG: the token does not match with request {}",
+							&path_requested
+						);
+					}
+
+					Err(iron::IronError::new(
+						StringError(String::from("403 : FORBIDDEN")),
+						iron::status::Status::Forbidden,
+					))
 				}
 			} else {
-				if instructions.debug {
-					println!(
-						"DEBUG: the token does not match with request {}",
-						&path_requested
-					);
-				}
-
 				Err(iron::IronError::new(
-					StringError(String::from("403 : FORBIDDEN")),
-					iron::status::Status::Forbidden,
+					StringError(String::from("404 : NOT FOUND")),
+					iron::status::Status::NotFound,
 				))
 			}
 		})
