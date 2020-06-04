@@ -1,15 +1,21 @@
 pub fn browse_target_folders(
 	webview: &mut web_view::WebView<std::sync::Arc<std::sync::Mutex<crate::user_data::UserData>>>,
-	show_debug: bool,
+	logger: charlie_buffalo::ConcurrentLogger,
 	file_regex: &regex::Regex,
 	sort_order: String,
 	folders: Vec<String>,
 	toggle_window: bool,
 ) {
 	let mut js_instructions = {
-		if show_debug {
-			println!("DEBUG: starting searching in targets");
-		}
+		charlie_buffalo::push(
+			&logger,
+			vec![
+				crate::LogLevel::DEBUG.into(),
+				charlie_buffalo::Attr::new("component", "webview").into(),
+				charlie_buffalo::Attr::new("event", "browse_target_folders").into(),
+			],
+			Some("starting searching in targets"),
+		);
 
 		let mut images: Vec<crate::user_data::Image> = vec![];
 		for root in &folders {
@@ -28,47 +34,109 @@ pub fn browse_target_folders(
 										match name.to_str() {
 											Some(file_name) => {
 												if file_regex.is_match(file_name) {
-													if show_debug {
-														println!(
-															"DEBUG: adding file {:?}",
-															file_name
-														);
-													}
+													charlie_buffalo::push(
+														&logger,
+														vec![
+															crate::LogLevel::DEBUG.into(),
+															charlie_buffalo::Attr::new(
+																"component",
+																"webview",
+															)
+															.into(),
+															charlie_buffalo::Attr::new(
+																"event",
+																"browse_target_folders",
+															)
+															.into(),
+														],
+														Some(&format!(
+															"adding file {:?}",
+															&file_name
+														)),
+													);
 
 													return true;
 												} else {
-													if show_debug {
-														println!(
-												"DEBUG: file {:?} does not match file filter regex",
-												file_name
-											);
-													}
+													charlie_buffalo::push(&logger,
+														vec![
+															crate::LogLevel::DEBUG.into(),
+															charlie_buffalo::Attr::new("component", "webview").into(),
+															charlie_buffalo::Attr::new("event", "browse_target_folders").into(),
+														],
+														Some(&format!("file {:?} does not match file filter regex", &file_name)),
+													);
+
 													return false;
 												}
 											}
 											None => {
-												if show_debug {
-													println!(
-											"DEBUG: can not get UTF-8 file name of {:?}",
-											name
-										);
-												}
+												charlie_buffalo::push(
+													&logger,
+													vec![
+														crate::LogLevel::DEBUG.into(),
+														charlie_buffalo::Attr::new(
+															"component",
+															"webview",
+														)
+														.into(),
+														charlie_buffalo::Attr::new(
+															"event",
+															"browse_target_folders",
+														)
+														.into(),
+													],
+													Some(&format!(
+														"can not get UTF-8 file name of {:?}",
+														&name
+													)),
+												);
+
 												return false;
 											}
 										}
 									} else {
-										if show_debug {
-											println!(
-												"DEBUG: can not get file name of {:?}",
+										charlie_buffalo::push(
+											&logger,
+											vec![
+												crate::LogLevel::DEBUG.into(),
+												charlie_buffalo::Attr::new(
+													"component",
+													"webview",
+												)
+												.into(),
+												charlie_buffalo::Attr::new(
+													"event",
+													"browse_target_folders",
+												)
+												.into(),
+											],
+											Some(&format!(
+												"can not get file name of {:?}",
 												i.current
-											);
-										}
+											)),
+										);
+
 										return false;
 									}
 								} else {
-									if show_debug {
-										println!("DEBUG: {:?} is not a file", i.current);
-									}
+									charlie_buffalo::push(
+										&logger,
+										vec![
+											crate::LogLevel::DEBUG.into(),
+											charlie_buffalo::Attr::new(
+												"component",
+												"webview",
+											)
+											.into(),
+											charlie_buffalo::Attr::new(
+												"event",
+												"browse_target_folders",
+											)
+											.into(),
+										],
+										Some(&format!("{:?} is not a file", i.current)),
+									);
+
 									return false;
 								}
 							})
@@ -76,17 +144,39 @@ pub fn browse_target_folders(
 					);
 				}
 				Err(e) => {
-					eprintln!("ERROR: can not read folder {} : {}", &root, e);
+					charlie_buffalo::push(
+						&logger,
+						vec![
+							crate::LogLevel::ERROR.into(),
+							charlie_buffalo::Attr::new("component", "webview").into(),
+							charlie_buffalo::Attr::new("event", "browse_target_folders")
+								.into(),
+						],
+						Some(&format!("can not read folder {} : {}", &root, e)),
+					);
 				}
 			}
 		}
 
-		if show_debug {
-			println!();
-			println!("DEBUG: end of searching in root targets");
-			println!();
-			println!("DEBUG: sorting found files by order : {}", &sort_order);
-		}
+		charlie_buffalo::push(
+			&logger,
+			vec![
+				crate::LogLevel::DEBUG.into(),
+				charlie_buffalo::Attr::new("component", "webview").into(),
+				charlie_buffalo::Attr::new("event", "browse_target_folders").into(),
+			],
+			Some("end of searching in root targets"),
+		);
+
+		charlie_buffalo::push(
+			&logger,
+			vec![
+				crate::LogLevel::DEBUG.into(),
+				charlie_buffalo::Attr::new("component", "webview").into(),
+				charlie_buffalo::Attr::new("event", "browse_target_folders").into(),
+			],
+			Some(&format!("sorting found files by order : {}", &sort_order)),
+		);
 
 		if sort_order == "modified" {
 			images.sort_by(|a, b| {
@@ -107,9 +197,15 @@ pub fn browse_target_folders(
 			});
 		}
 
-		if show_debug {
-			println!("DEBUG: end of sorting found files");
-		}
+		charlie_buffalo::push(
+			&logger,
+			vec![
+				crate::LogLevel::DEBUG.into(),
+				charlie_buffalo::Attr::new("component", "webview").into(),
+				charlie_buffalo::Attr::new("event", "browse_target_folders").into(),
+			],
+			Some("end of sorting found files"),
+		);
 
 		let mut local_user_data = webview.user_data_mut().lock().unwrap();
 		local_user_data.images = images;
@@ -129,5 +225,5 @@ pub fn browse_target_folders(
 		js_instructions += "App.methods.toggle_open_window();";
 	}
 
-	crate::window::run_js(webview, &js_instructions, show_debug).unwrap();
+	crate::window::run_js(webview, &js_instructions, logger).unwrap();
 }

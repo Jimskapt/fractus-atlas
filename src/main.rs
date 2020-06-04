@@ -1,8 +1,13 @@
 /* TODO :
 - translations ?
-- fix preload & tokens rolling
 - can move back after move
 - open current file in external
+- fix manual target path field change
+- add delete button on target fields
+- waiting window ?
+- support for multiple paths like `/home/user/{folder1,folder2}/src/`
+- fix case_insensitive for file filter regex
+- notification center
 */
 
 #![allow(clippy::needless_return)]
@@ -22,8 +27,8 @@ mod window;
 fn main() {
 	human_panic::setup_panic!();
 
-	let instructions = cli_parsing::CliInstructions::new();
-	let configuration = configuration::Configuration::from(&instructions);
+	let (instructions, logger) = cli_parsing::CliInstructions::new();
+	let configuration = configuration::Configuration::from((&instructions, logger.clone()));
 
 	let mut rng = rand::thread_rng();
 	let user_data = user_data::UserData {
@@ -35,16 +40,57 @@ fn main() {
 	};
 	let arc_user_data: Arc<Mutex<user_data::UserData>> = Arc::new(Mutex::new(user_data));
 
-	webserver::run(instructions.clone(), std::sync::Arc::clone(&arc_user_data));
-	window::run(
+	webserver::run(
 		instructions.clone(),
-		configuration,
 		std::sync::Arc::clone(&arc_user_data),
+		logger.clone(),
 	);
 
-	if instructions.debug {
-		println!("DEBUG: end of program");
-	}
+	window::run(
+		instructions,
+		configuration,
+		std::sync::Arc::clone(&arc_user_data),
+		logger,
+	);
 }
 
 const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz-0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+#[derive(serde::Serialize)]
+pub enum LogLevel {
+	DEBUG,
+	INFO,
+	WARN,
+	ERROR,
+	PANIC,
+}
+
+impl charlie_buffalo::ValueAsString for LogLevel {
+	fn as_string(&self) -> String {
+		format!(
+			"{}",
+			match self {
+				LogLevel::DEBUG => 10,
+				LogLevel::INFO => 20,
+				LogLevel::WARN => 30,
+				LogLevel::ERROR => 40,
+				LogLevel::PANIC => 50,
+			}
+		)
+	}
+}
+
+impl std::cmp::PartialEq<LogLevel> for &String {
+	fn eq(&self, other: &LogLevel) -> bool {
+		*self == &charlie_buffalo::ValueAsString::as_string(other)
+	}
+}
+
+impl std::convert::Into<(String, String)> for LogLevel {
+	fn into(self) -> (String, String) {
+		return (
+			String::from("level"),
+			charlie_buffalo::ValueAsString::as_string(&self),
+		);
+	}
+}

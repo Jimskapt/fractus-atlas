@@ -1,6 +1,6 @@
 pub fn show_browse_target(
 	webview: &mut web_view::WebView<std::sync::Arc<std::sync::Mutex<crate::user_data::UserData>>>,
-	show_debug: bool,
+	logger: charlie_buffalo::ConcurrentLogger,
 	id: usize,
 ) {
 	let js_instruction = {
@@ -41,5 +41,5 @@ pub fn show_browse_target(
 		format!("App.remote.receive.set_targets({});", &targets_buffer)
 	};
 
-	crate::window::run_js(webview, &js_instruction, show_debug).unwrap();
+	crate::window::run_js(webview, &js_instruction, logger).unwrap();
 }

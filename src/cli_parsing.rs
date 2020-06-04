@@ -37,7 +37,7 @@ impl Default for CliInstructions {
 	}
 }
 impl CliInstructions {
-	pub fn new() -> Self {
+	pub fn new() -> (Self, charlie_buffalo::ConcurrentLogger) {
 		let mut result = CliInstructions::default();
 
 		let default_targets = result.targets.join(",");
@@ -142,7 +142,6 @@ impl CliInstructions {
 
 		result.debug = matches.is_present("debug");
 
-		// TODO : support for multiple paths like `/home/user/{folder1,folder2}/src/`
 		result.targets = matches
 			.value_of("TARGETS")
 			.unwrap_or_default()
@@ -163,23 +162,15 @@ impl CliInstructions {
 				.unwrap_or(&configuration_path),
 		);
 
-		if result.debug {
-			println!("DEBUG: debug mode activated");
-			println!();
-			println!("DEBUG: root targets are {:?}", result.targets);
-			println!("DEBUG: filter regex is {:?}", result.filter);
-			println!("DEBUG: working folder is {:?}", result.working_folder);
-			println!("DEBUG: sorting files by {:?}", result.sort);
-			println!();
-		}
-
 		let working_folder = std::path::Path::new(&result.working_folder);
 		if !working_folder.exists() {
-			println!(
-				"DEBUG: working folder {:?} does not exists, attempting to create it",
-				working_folder
-			);
-			println!();
+			if result.debug {
+				println!(
+					"INFO: working folder {:?} does not exists, attempting to create it",
+					working_folder
+				);
+				println!();
+			}
 
 			std::fs::create_dir_all(&working_folder).unwrap_or_else(|_| {
 				panic!(
@@ -197,6 +188,101 @@ impl CliInstructions {
 				.unwrap_or_default(),
 		);
 
-		return result;
+		let mut logpath = std::path::PathBuf::from(&result.working_folder);
+		logpath.push("logs.msgpack");
+		let logpath_for_dispatch = logpath.clone();
+		let logpath_for_drop = logpath;
+		let show_logs = result.debug;
+
+		let logger = charlie_buffalo::concurrent_logger_from(charlie_buffalo::Logger::new(
+			charlie_buffalo::new_dispatcher(Box::from(move |log: charlie_buffalo::Log| {
+				let mut new_log = log;
+
+				let attributes: Vec<(String, String)> =
+					vec![charlie_buffalo::Attr::new(
+						"time",
+						format!("{}", chrono::offset::Local::now()),
+					)
+					.into()];
+				for attribute in attributes {
+					new_log.attributes.insert(attribute.0, attribute.1);
+				}
+
+				if show_logs
+					|| new_log.attributes.get("level").unwrap_or(
+						&charlie_buffalo::ValueAsString::as_string(&crate::LogLevel::INFO),
+					) > &charlie_buffalo::ValueAsString::as_string(&crate::LogLevel::DEBUG)
+				{
+					println!("{}", new_log);
+				}
+
+				let mut result: Vec<charlie_buffalo::Log> = rmp_serde::decode::from_slice(
+					std::fs::read(&logpath_for_dispatch)
+						.unwrap_or_default()
+						.as_slice(),
+				)
+				.unwrap_or_default();
+				result.push(new_log);
+				std::fs::write(
+					&logpath_for_dispatch,
+					rmp_serde::encode::to_vec(&result).unwrap(),
+				)
+				.unwrap();
+			})),
+			charlie_buffalo::new_dropper(Box::from(move |logger: &charlie_buffalo::Logger| {
+				(*logger).push(
+					vec![
+						crate::LogLevel::DEBUG.into(),
+						charlie_buffalo::Attr::new("stage", "stop").into(),
+					],
+					Some("stopping the app"),
+				);
+
+				println!(
+					"\n(logs should be inside file {})\n",
+					&logpath_for_drop.as_path().to_str().unwrap()
+				);
+			})),
+		));
+
+		charlie_buffalo::push(
+			&logger,
+			vec![
+				crate::LogLevel::DEBUG.into(),
+				charlie_buffalo::Attr::new("stage", "startup").into(),
+			],
+			Some("running up the app"),
+		);
+
+		if result.debug {
+			charlie_buffalo::push(
+				&logger,
+				vec![crate::LogLevel::DEBUG.into()],
+				Some("debug mode activated"),
+			);
+		}
+
+		charlie_buffalo::push(
+			&logger,
+			vec![crate::LogLevel::DEBUG.into()],
+			Some(&format!("root targets are {:?}", result.targets)),
+		);
+		charlie_buffalo::push(
+			&logger,
+			vec![crate::LogLevel::DEBUG.into()],
+			Some(&format!("filter regex is {:?}", result.filter)),
+		);
+		charlie_buffalo::push(
+			&logger,
+			vec![crate::LogLevel::DEBUG.into()],
+			Some(&format!("working folder is {:?}", result.working_folder)),
+		);
+		charlie_buffalo::push(
+			&logger,
+			vec![crate::LogLevel::DEBUG.into()],
+			Some(&format!("sorting files by {:?}", result.sort)),
+		);
+
+		return (result, logger);
 	}
 }

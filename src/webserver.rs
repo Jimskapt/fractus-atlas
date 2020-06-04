@@ -1,15 +1,21 @@
 pub fn run(
 	instructions: crate::cli_parsing::CliInstructions,
 	user_data: std::sync::Arc<std::sync::Mutex<crate::user_data::UserData>>,
+	logger: charlie_buffalo::ConcurrentLogger,
 ) {
 	let port = { user_data.lock().unwrap().internal_server_port };
-
-	if instructions.debug {
-		println!(
-			"DEBUG: internal web server will be launched at http://127.0.0.1:{}/",
+	charlie_buffalo::push(
+		&logger,
+		vec![
+			crate::LogLevel::DEBUG.into(),
+			charlie_buffalo::Attr::new("stage", "webserver").into(),
+			charlie_buffalo::Attr::new("port", &port).into(),
+		],
+		Some(&format!(
+			"internal web server will be launched at http://127.0.0.1:{}/",
 			&port
-		);
-	}
+		)),
+	);
 
 	std::thread::spawn(move || {
 		iron::Iron::new(move |req: &mut iron::prelude::Request| {
@@ -41,6 +47,18 @@ pub fn run(
 					if instructions.debug {
 						println!("DEBUG: receiving request to {}", &path_requested);
 					}
+
+					/* TODO
+					charlie_buffalo::push(&logger,
+						vec![
+							crate::LogLevel::DEBUG.into(),
+							charlie_buffalo::Attr::new("component", "webserver").into(),
+						],
+						Some(&format!(
+							"receiving request to {}", &path_requested
+						)),
+					);
+					*/
 
 					let path = &search.first().unwrap().current;
 					let file = std::fs::read(&path);

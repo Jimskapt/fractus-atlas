@@ -1,6 +1,6 @@
 pub fn next(
 	webview: &mut web_view::WebView<std::sync::Arc<std::sync::Mutex<crate::user_data::UserData>>>,
-	show_debug: bool,
+	logger: charlie_buffalo::ConcurrentLogger,
 ) {
 	let js_instructions: String = {
 		let mut local_user_data = webview.user_data_mut().lock().unwrap();
@@ -13,5 +13,5 @@ pub fn next(
 		result
 	};
 
-	crate::window::run_js(webview, &js_instructions, show_debug).unwrap();
+	crate::window::run_js(webview, &js_instructions, logger).unwrap();
 }

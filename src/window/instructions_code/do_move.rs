@@ -3,7 +3,7 @@ use rand::Rng;
 
 pub fn do_move(
 	webview: &mut web_view::WebView<std::sync::Arc<std::sync::Mutex<crate::user_data::UserData>>>,
-	show_debug: bool,
+	logger: charlie_buffalo::ConcurrentLogger,
 	working_folder: String,
 	into: String,
 ) {
@@ -53,12 +53,18 @@ pub fn do_move(
 						new_path.push(new_name);
 					}
 
-					if show_debug {
-						println!(
-							"DEBUG: attempting to move {:?} in {:?}",
+					charlie_buffalo::push(
+						&logger,
+						vec![
+							crate::LogLevel::DEBUG.into(),
+							charlie_buffalo::Attr::new("component", "webview").into(),
+							charlie_buffalo::Attr::new("event", "do_move").into(),
+						],
+						Some(&format!(
+							"attempting to move {:?} in {:?}",
 							&image.current, &new_path
-						);
-					}
+						)),
+					);
 
 					if let Some(folder) = new_path.parent() {
 						std::fs::create_dir_all(folder).unwrap();
@@ -70,22 +76,36 @@ pub fn do_move(
 							&image.current, &new_path
 						);
 					} else {
-						if show_debug {
-							println!(
-								"DEBUG: file {:?} successfully copied to {:?}",
+						charlie_buffalo::push(
+							&logger,
+							vec![
+								crate::LogLevel::DEBUG.into(),
+								charlie_buffalo::Attr::new("component", "webview").into(),
+								charlie_buffalo::Attr::new("event", "do_move").into(),
+							],
+							Some(&format!(
+								"file {:?} successfully copied to {:?}",
 								&image.current, &new_path
-							);
-						}
+							)),
+						);
 
 						if trash::remove(&image.current).is_err() {
 							println!(
 								"INFO: can not move file {:?} to trash (after copied it)",
 								&image.current
 							);
-						} else if show_debug {
-							println!(
-								"DEBUG: file {:?} moved to trash (after copied it)",
-								&image.current
+						} else {
+							charlie_buffalo::push(
+								&logger,
+								vec![
+									crate::LogLevel::DEBUG.into(),
+									charlie_buffalo::Attr::new("component", "webview").into(),
+									charlie_buffalo::Attr::new("event", "do_move").into(),
+								],
+								Some(&format!(
+									"file {:?} moved to trash (after copied it)",
+									&image.current
+								)),
 							);
 						}
 					}
@@ -129,5 +149,5 @@ App.remote.receive.set_folders({});",
 		&folders_buffer
 	);
 
-	crate::window::run_js(webview, &js_instructions, show_debug).unwrap();
+	crate::window::run_js(webview, &js_instructions, logger).unwrap();
 }

@@ -9,8 +9,29 @@ impl Default for Configuration {
 		}
 	}
 }
-impl std::convert::From<&crate::cli_parsing::CliInstructions> for Configuration {
-	fn from(instructions: &crate::cli_parsing::CliInstructions) -> Self {
+impl
+	std::convert::From<(
+		&crate::cli_parsing::CliInstructions,
+		std::sync::Arc<std::sync::Mutex<charlie_buffalo::Logger>>,
+	)> for Configuration
+{
+	fn from(
+		input: (
+			&crate::cli_parsing::CliInstructions,
+			charlie_buffalo::ConcurrentLogger,
+		),
+	) -> Self {
+		let (instructions, logger) = input;
+
+		charlie_buffalo::push(
+			&logger,
+			vec![
+				crate::LogLevel::DEBUG.into(),
+				charlie_buffalo::Attr::new("stage", "configuration").into(),
+			],
+			Some("attempting to load configuration"),
+		);
+
 		let mut result = Configuration::default();
 
 		let configuration_path = std::path::Path::new(&instructions.configuration_path);
@@ -24,26 +45,36 @@ impl std::convert::From<&crate::cli_parsing::CliInstructions> for Configuration 
 						result = configuration;
 					}
 					Err(e) => {
-						println!(
-                                "INFO: error while parsing configuration, falling back to default configuration (this is not fatal) : {}",
-                                e
-                            );
+						charlie_buffalo::push(
+							&logger,
+							vec![crate::LogLevel::INFO.into()],
+							Some(
+								&format!("error while parsing configuration (this is not fatal, we falling back to default configuration) because : {}",
+								e)
+							)
+						);
 					}
 				},
 				Err(e) => {
-					println!(
-                        "INFO: error while reading configuration, falling back to default configuration (this is not fatal) : {}",
-                        e
-                    );
+					charlie_buffalo::push(
+						&logger,
+						vec![crate::LogLevel::INFO.into()],
+						Some(
+							&format!("error while reading configuration (this is not fatal, we falling back to default configuration) because : {}",
+							e)
+						)
+					);
 				}
 			}
 		} else {
-			if instructions.debug {
-				println!(
-                    "DEBUG: configuration file does not exists at {}, creating it with default value",
-                    &instructions.configuration_path
-                );
-			}
+			charlie_buffalo::push(
+				&logger,
+				vec![crate::LogLevel::DEBUG.into()],
+				Some(&format!(
+					"configuration file does not exists at {}, creating it with default value",
+					&instructions.configuration_path
+				)),
+			);
 
 			if let Some(folder) = &configuration_path.parent() {
 				match std::fs::create_dir_all(folder) {
@@ -52,27 +83,37 @@ impl std::convert::From<&crate::cli_parsing::CliInstructions> for Configuration 
 							match std::fs::write(&instructions.configuration_path, bytes) {
 								Ok(_) => {}
 								Err(e) => {
-									println!(
-										"INFO: can not create file {:?} (this is not fatal) : {}",
-										&instructions.configuration_path, e
+									charlie_buffalo::push(
+										&logger,
+										vec![crate::LogLevel::INFO.into()],
+										Some(&format!(
+											"can not create file {:?} (this is not fatal) because : {}",
+											&instructions.configuration_path, e
+										)),
 									);
 								}
 							}
 						}
 					}
 					Err(e) => {
-						println!(
-							"INFO: can not create folder {:?} (this is not fatal) : {}",
-							&folder, e
+						charlie_buffalo::push(
+							&logger,
+							vec![crate::LogLevel::INFO.into()],
+							Some(&format!(
+								"can not create folder {:?} (this is not fatal) because : {}",
+								&folder, e
+							)),
 						);
 					}
 				}
 			}
 		};
 
-		if instructions.debug {
-			println!("DEBUG: {:?}", &result);
-		}
+		charlie_buffalo::push(
+			&logger,
+			vec![crate::LogLevel::DEBUG.into()],
+			Some(&format!("config is : {:?}", &result)),
+		);
 
 		return result;
 	}

@@ -1,6 +1,6 @@
 pub fn set_position(
 	webview: &mut web_view::WebView<std::sync::Arc<std::sync::Mutex<crate::user_data::UserData>>>,
-	show_debug: bool,
+	logger: charlie_buffalo::ConcurrentLogger,
 	value: usize,
 ) {
 	let js_instructions: String = {
@@ -15,5 +15,5 @@ pub fn set_position(
 		result
 	};
 
-	crate::window::run_js(webview, &js_instructions, show_debug).unwrap();
+	crate::window::run_js(webview, &js_instructions, logger).unwrap();
 }
