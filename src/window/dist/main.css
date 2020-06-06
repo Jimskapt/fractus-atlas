@@ -118,6 +118,12 @@ article #no-images-error {
 	padding: 1em;
 }
 
+article #no-images-error button {
+	margin-top: 1em;
+	padding: 1em;
+	cursor: pointer;
+}
+
 .popup_window {
 	display: none;
 	z-index: 20;

@@ -19,7 +19,7 @@ pub fn show_browse_target(
 			}
 		} else if let Some(path) = tinyfiledialogs::select_folder_dialog(
 			"📂 Browse to folder ...",
-			&dunce::canonicalize("")
+			&dunce::canonicalize(".")
 				.unwrap_or_default()
 				.as_path()
 				.to_str()

@@ -8,6 +8,7 @@
 - support for multiple paths like `/home/user/{folder1,folder2}/src/`
 - fix case_insensitive for file filter regex
 - notification center
+- fix call limits on backend
 */
 
 #![allow(clippy::needless_return)]
@@ -31,13 +32,12 @@ fn main() {
 	let configuration = configuration::Configuration::from((&instructions, logger.clone()));
 
 	let mut rng = rand::thread_rng();
-	let user_data = user_data::UserData {
-		internal_server_port: rng.gen_range(1024, 65535),
-		position: None,
-		images: vec![],
-		targets: instructions.targets.clone(),
-		debug: instructions.debug,
-	};
+
+	let mut user_data = user_data::UserData::default();
+	user_data.internal_server_port = rng.gen_range(1024, 65535);
+	user_data.targets = instructions.targets.clone();
+	user_data.debug = instructions.debug;
+
 	let arc_user_data: Arc<Mutex<user_data::UserData>> = Arc::new(Mutex::new(user_data));
 
 	webserver::run(

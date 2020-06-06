@@ -28,7 +28,7 @@ impl Default for CliInstructions {
 
 		CliInstructions {
 			debug: false,
-			targets: vec![String::new()],
+			targets: vec![String::from(".")],
 			sort: String::from("modified"),
 			filter: String::from("\\.((png)|(tiff)|(tif)|(bmp)|(jpg)|(jpeg)|(gif)|(jfif))$"),
 			working_folder,

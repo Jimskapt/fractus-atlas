@@ -1,6 +1,7 @@
 use rand::seq::IteratorRandom;
 use rand::Rng;
 
+#[derive(Default)]
 pub struct UserData {
 	pub internal_server_port: usize,
 	pub position: Option<usize>,
