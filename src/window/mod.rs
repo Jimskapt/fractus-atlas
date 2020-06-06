@@ -59,7 +59,6 @@ pub fn run(
 					toggle_window,
 				} => {
 
-                    // TODO : fix case_insensitive
                     let file_regex = match regex::RegexBuilder::new(&instructions_for_window.filter)
                         .case_insensitive(true)
                         .build()
