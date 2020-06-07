@@ -48,17 +48,14 @@ pub fn run(
 						println!("DEBUG: receiving request to {}", &path_requested);
 					}
 
-					/* TODO
-					charlie_buffalo::push(&logger,
+					charlie_buffalo::push(
+						&logger,
 						vec![
 							crate::LogLevel::DEBUG.into(),
 							charlie_buffalo::Attr::new("component", "webserver").into(),
 						],
-						Some(&format!(
-							"receiving request to {}", &path_requested
-						)),
+						Some(&format!("receiving request to {}", &path_requested)),
 					);
-					*/
 
 					let path = &search.first().unwrap().current;
 					let file = std::fs::read(&path);

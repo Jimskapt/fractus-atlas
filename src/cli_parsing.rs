@@ -190,23 +190,52 @@ impl CliInstructions {
 
 		let mut logpath = std::path::PathBuf::from(&result.working_folder);
 		logpath.push("logs.msgpack");
-		let logpath_for_dispatch = logpath.clone();
+		let logpath_for_buffer = logpath.clone();
 		let logpath_for_drop = logpath;
 		let show_logs = result.debug;
+
+		// This buffer is used to centralize receive of logs and write them asynchronously.
+		let (buffer_tx, buffer_rx) = std::sync::mpsc::channel::<charlie_buffalo::Log>();
+		std::thread::spawn(move || {
+			let mut result: Vec<charlie_buffalo::Log> = rmp_serde::decode::from_slice(
+				std::fs::read(&logpath_for_buffer)
+					.unwrap_or_default()
+					.as_slice(),
+			)
+			.unwrap_or_default();
+
+			let mut do_write = false;
+
+			loop {
+				match buffer_rx.recv_timeout(std::time::Duration::from_millis(10)) {
+					Ok(log) => {
+						result.push(log);
+
+						do_write = true;
+					}
+					Err(_) => {
+						if do_write {
+							std::fs::write(
+								&logpath_for_buffer,
+								rmp_serde::encode::to_vec(&result).unwrap(),
+							)
+							.unwrap();
+
+							do_write = false;
+						}
+					}
+				}
+			}
+		});
 
 		let logger = charlie_buffalo::concurrent_logger_from(charlie_buffalo::Logger::new(
 			charlie_buffalo::new_dispatcher(Box::from(move |log: charlie_buffalo::Log| {
 				let mut new_log = log;
 
-				let attributes: Vec<(String, String)> =
-					vec![charlie_buffalo::Attr::new(
-						"time",
-						format!("{}", chrono::offset::Local::now()),
-					)
-					.into()];
-				for attribute in attributes {
-					new_log.attributes.insert(attribute.0, attribute.1);
-				}
+				new_log.attributes.insert(
+					String::from("time"),
+					format!("{}", chrono::offset::Local::now()),
+				);
 
 				if show_logs
 					|| new_log.attributes.get("level").unwrap_or(
@@ -216,27 +245,28 @@ impl CliInstructions {
 					println!("{}", new_log);
 				}
 
-				let mut result: Vec<charlie_buffalo::Log> = rmp_serde::decode::from_slice(
-					std::fs::read(&logpath_for_dispatch)
+				buffer_tx.send(new_log).unwrap();
+			})),
+			charlie_buffalo::new_dropper(Box::from(move |_logger: &charlie_buffalo::Logger| {
+				// The async buffer can't write this log before overall drop,
+				// so we do this synchronously.
+				let mut logs: Vec<charlie_buffalo::Log> = rmp_serde::decode::from_slice(
+					std::fs::read(&logpath_for_drop)
 						.unwrap_or_default()
 						.as_slice(),
 				)
 				.unwrap_or_default();
-				result.push(new_log);
-				std::fs::write(
-					&logpath_for_dispatch,
-					rmp_serde::encode::to_vec(&result).unwrap(),
-				)
-				.unwrap();
-			})),
-			charlie_buffalo::new_dropper(Box::from(move |logger: &charlie_buffalo::Logger| {
-				(*logger).push(
+
+				logs.push(charlie_buffalo::Log::from((
 					vec![
 						crate::LogLevel::DEBUG.into(),
 						charlie_buffalo::Attr::new("stage", "stop").into(),
 					],
 					Some("stopping the app"),
-				);
+				)));
+
+				std::fs::write(&logpath_for_drop, rmp_serde::encode::to_vec(&logs).unwrap())
+					.unwrap();
 
 				println!(
 					"\n(logs should be inside file {})\n",

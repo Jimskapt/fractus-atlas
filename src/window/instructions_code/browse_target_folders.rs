@@ -99,11 +99,8 @@ pub fn browse_target_folders(
 											&logger,
 											vec![
 												crate::LogLevel::DEBUG.into(),
-												charlie_buffalo::Attr::new(
-													"component",
-													"webview",
-												)
-												.into(),
+												charlie_buffalo::Attr::new("component", "webview")
+													.into(),
 												charlie_buffalo::Attr::new(
 													"event",
 													"browse_target_folders",
@@ -123,11 +120,8 @@ pub fn browse_target_folders(
 										&logger,
 										vec![
 											crate::LogLevel::DEBUG.into(),
-											charlie_buffalo::Attr::new(
-												"component",
-												"webview",
-											)
-											.into(),
+											charlie_buffalo::Attr::new("component", "webview")
+												.into(),
 											charlie_buffalo::Attr::new(
 												"event",
 												"browse_target_folders",
@@ -149,8 +143,7 @@ pub fn browse_target_folders(
 						vec![
 							crate::LogLevel::ERROR.into(),
 							charlie_buffalo::Attr::new("component", "webview").into(),
-							charlie_buffalo::Attr::new("event", "browse_target_folders")
-								.into(),
+							charlie_buffalo::Attr::new("event", "browse_target_folders").into(),
 						],
 						Some(&format!("can not read folder {} : {}", &root, e)),
 					);
