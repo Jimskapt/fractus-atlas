@@ -9,6 +9,8 @@
 - fix case_insensitive for file filter regex
 - notification center
 - fix call limits on backend
+- create a buffer file in each target root ? (faster next loading, followed by async update)
+- listen file changes in targets
 */
 
 #![allow(clippy::needless_return)]

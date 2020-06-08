@@ -14,7 +14,7 @@ pub use random::random;
 pub use set_position::set_position;
 pub use show_browse_target::show_browse_target;
 
-#[derive(serde_derive::Deserialize)]
+#[derive(serde_derive::Deserialize, serde_derive::Serialize, Debug)]
 #[serde(tag = "instruction", rename_all = "PascalCase")]
 pub enum Instruction {
 	Previous,

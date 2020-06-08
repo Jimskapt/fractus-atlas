@@ -33,11 +33,16 @@ pub fn run(
 		.user_data(arc_for_window_data)
 		.invoke_handler(|webview, arg| {
 
+			let simple_instruction = serde_json::from_str::<instructions_code::Instruction>(&arg).unwrap();
+			let simple_instruction = serde_json::to_value(simple_instruction).unwrap();
+			let simple_instruction = format!("{}", simple_instruction["instruction"]);
+			let simple_instruction = simple_instruction.replace("\"", "");
+
 			charlie_buffalo::push(&logger,
 				vec![
 					crate::LogLevel::DEBUG.into(),
 					charlie_buffalo::Attr::new("component", "webview").into(),
-					charlie_buffalo::Attr::new("event", arg).into(),
+					charlie_buffalo::Attr::new("event", simple_instruction).into(),
 				],
 				None
 			);
@@ -182,7 +187,7 @@ document.body.style.background = {};",
 			crate::LogLevel::DEBUG.into(),
 			charlie_buffalo::Attr::new("component", "webview").into(),
 		],
-		Some("it will run web_view window, now"),
+		Some("attempting to display web_view window"),
 	);
 
 	main_window.run().unwrap();

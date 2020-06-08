@@ -279,6 +279,7 @@ impl CliInstructions {
 			&logger,
 			vec![
 				crate::LogLevel::DEBUG.into(),
+				charlie_buffalo::Attr::new("component", "app").into(),
 				charlie_buffalo::Attr::new("stage", "startup").into(),
 			],
 			Some("running up the app"),
@@ -287,29 +288,48 @@ impl CliInstructions {
 		if result.debug {
 			charlie_buffalo::push(
 				&logger,
-				vec![crate::LogLevel::DEBUG.into()],
+				vec![
+					crate::LogLevel::DEBUG.into(),
+					charlie_buffalo::Attr::new("component", "app").into(),
+				],
 				Some("debug mode activated"),
 			);
 		}
 
 		charlie_buffalo::push(
 			&logger,
-			vec![crate::LogLevel::DEBUG.into()],
+			vec![
+				crate::LogLevel::DEBUG.into(),
+				charlie_buffalo::Attr::new("component", "app").into(),
+				charlie_buffalo::Attr::new("stage", "configuration").into(),
+			],
 			Some(&format!("root targets are {:?}", result.targets)),
 		);
 		charlie_buffalo::push(
 			&logger,
-			vec![crate::LogLevel::DEBUG.into()],
+			vec![
+				crate::LogLevel::DEBUG.into(),
+				charlie_buffalo::Attr::new("component", "app").into(),
+				charlie_buffalo::Attr::new("stage", "configuration").into(),
+			],
 			Some(&format!("filter regex is {:?}", result.filter)),
 		);
 		charlie_buffalo::push(
 			&logger,
-			vec![crate::LogLevel::DEBUG.into()],
+			vec![
+				crate::LogLevel::DEBUG.into(),
+				charlie_buffalo::Attr::new("component", "app").into(),
+				charlie_buffalo::Attr::new("stage", "configuration").into(),
+			],
 			Some(&format!("working folder is {:?}", result.working_folder)),
 		);
 		charlie_buffalo::push(
 			&logger,
-			vec![crate::LogLevel::DEBUG.into()],
+			vec![
+				crate::LogLevel::DEBUG.into(),
+				charlie_buffalo::Attr::new("component", "app").into(),
+				charlie_buffalo::Attr::new("stage", "configuration").into(),
+			],
 			Some(&format!("sorting files by {:?}", result.sort)),
 		);
 

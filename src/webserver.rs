@@ -8,7 +8,7 @@ pub fn run(
 		&logger,
 		vec![
 			crate::LogLevel::DEBUG.into(),
-			charlie_buffalo::Attr::new("stage", "webserver").into(),
+			charlie_buffalo::Attr::new("component", "webserver").into(),
 			charlie_buffalo::Attr::new("port", &port).into(),
 		],
 		Some(&format!(
