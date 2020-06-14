@@ -44,10 +44,6 @@ pub fn run(
 					.collect::<Vec<crate::user_data::Image>>();
 
 				if !search.is_empty() {
-					if instructions.debug {
-						println!("DEBUG: receiving request to {}", &path_requested);
-					}
-
 					charlie_buffalo::push(
 						&logger,
 						vec![
@@ -70,7 +66,18 @@ pub fn run(
 						}
 						Err(e) => {
 							if instructions.debug {
-								eprintln!("ERROR: can not get file {:?} because : {}", path, e);
+								charlie_buffalo::push(
+									&logger,
+									vec![
+										crate::LogLevel::ERROR.into(),
+										charlie_buffalo::Attr::new("component", "webserver").into(),
+									],
+									Some(&format!(
+										"can not get file {} because : {}",
+										path.display(),
+										e
+									)),
+								);
 							}
 
 							match e.kind() {
@@ -90,12 +97,18 @@ pub fn run(
 						}
 					}
 				} else {
-					if instructions.debug {
-						println!(
-							"DEBUG: the token does not match with request {}",
+					charlie_buffalo::push(
+						&logger,
+						vec![
+							crate::LogLevel::INFO.into(),
+							charlie_buffalo::Flag::from("SECURITY").into(),
+							charlie_buffalo::Attr::new("component", "webserver").into(),
+						],
+						Some(&format!(
+							"the token does not match with request {}",
 							&path_requested
-						);
-					}
+						)),
+					);
 
 					Err(iron::IronError::new(
 						StringError(String::from("403 : FORBIDDEN")),

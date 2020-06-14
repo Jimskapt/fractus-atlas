@@ -19,7 +19,8 @@ let App = {
 		debug: false,
 		mode: 'browse',
 		position: 0,
-		current_image: '',
+		active_image: '',
+		active_already_moved: false,
 		images_count: 0,
 		folders: [],
 		target_folders: [],
@@ -37,7 +38,11 @@ let App = {
 					document.getElementById('confirmation-move').innerHTML = '';
 					document.getElementById('move_ok').disabled = true;
 				} else {
-					document.getElementById('confirmation-move').innerHTML = 'Current image will be moved inside the `' + App.data.selected_folder.get() + '/` sub-folder of the working folder.';
+					if (App.data.selected_folder.get() === '*move_back_to_origin*') {
+						document.getElementById('confirmation-move').innerHTML = 'Current image will be <strong>moved back inside its origin folder</strong>.';
+					} else {
+						document.getElementById('confirmation-move').innerHTML = 'Current image will be moved inside the `' + App.data.selected_folder.get() + '/` sub-folder of the working folder.';
+					}
 					document.getElementById('move_ok').disabled = false;
 				}
 			}
@@ -76,14 +81,14 @@ let App = {
 			if (App.data.internal_server_port !== undefined) {
 				image.src = 'http://127.0.0.1:' + App.data.internal_server_port + '/' + App.data.internal_server_token;
 			} else {
-				image.src = 'file:///' + App.data.current_image;
+				image.src = 'file:///' + App.data.active_image;
 			}
 			image.style.marginTop = '0';
 
-			document.getElementById("imgpath").value = App.data.current_image;
+			document.getElementById("imgpath").value = App.data.active_image;
 			document.getElementById("max_counter").innerHTML = App.data.images_count;
 
-			if (App.data.current_image === "") {
+			if (App.data.active_image === "") {
 				document.getElementById("position_input").value = 0;
 			} else {
 				document.getElementById("position_input").value = App.data.position + 1;
@@ -125,6 +130,10 @@ let App = {
 				App.data.selected_folder.set(value);
 			}
 
+			if (App.data.active_already_moved) {
+				search_items += '<label><input type="radio" name="selected_folder" value="*move_back_to_origin*" /> <i>⏪ Move back to origin folder</i></label><br>\n';
+			}
+
 			document.getElementById('move_search_results').innerHTML = search_items;
 
 			if (App.data.selected_folder.get().trim() === '' || (!selected_is_inside && App.data.folders.length > 0)) {
@@ -159,6 +168,9 @@ let App = {
 				document.getElementById('move_window').style.display = 'none';
 
 			} else if (App.data.images_count > 0) {
+
+				App.methods.refresh_folders_result(document.getElementById('move_search').value);
+
 				App.data.mode = 'move';
 
 				document.getElementById('move_window').style.display = 'block';
@@ -235,10 +247,11 @@ let App = {
 				App.data.folders = value;
 				App.methods.refresh_folders_result(document.getElementById('move_search').value);
 			},
-			set_active: function (position, path, token) {
+			set_active: function (position, path, token, is_active_already_moved) {
 				App.data.position = position;
-				App.data.current_image = path;
+				App.data.active_image = path;
 				App.data.internal_server_token = token;
+				App.data.active_already_moved = is_active_already_moved;
 				App.methods.refresh_image();
 			},
 			preload: function (token) {

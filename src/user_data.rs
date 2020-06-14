@@ -124,10 +124,11 @@ impl UserData {
 
 		if let Some(active) = self.get_active() {
 			result += &format!(
-				"App.remote.receive.set_active({}, {}, {});\n",
+				"App.remote.receive.set_active({}, {}, {}, {});\n",
 				self.position.unwrap(),
 				web_view::escape(active.current.as_path().to_str().unwrap()),
-				web_view::escape(&active.token)
+				web_view::escape(&active.token),
+				active.origin != active.current
 			);
 		}
 
@@ -137,6 +138,7 @@ impl UserData {
 
 #[derive(Clone)]
 pub struct Image {
+	pub origin: std::path::PathBuf,
 	pub current: std::path::PathBuf,
 	pub token: String,
 }
@@ -150,6 +152,7 @@ impl std::convert::From<std::path::PathBuf> for Image {
 		}
 
 		Image {
+			origin: from.clone(),
 			current: from,
 			token,
 		}

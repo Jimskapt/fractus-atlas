@@ -16,66 +16,65 @@ pub fn do_move(
 
 			match image {
 				Some(image) => {
-					let mut new_path = working_folder.clone();
-					new_path.push(&into);
-					new_path.push(image.current.as_path().file_name().unwrap_or_default());
+					let mut new_path = {
+						if into == "*move_back_to_origin*" {
+							image.origin.clone()
+						} else {
+							let mut result = working_folder.clone();
+							result.push(&into);
+							result.push(image.current.as_path().file_name().unwrap_or_default());
 
-					while new_path.exists() {
-						new_path = working_folder.clone();
-						new_path.push(&into);
+							result
+						}
+					};
 
-						let mut new_name = String::from(
-							image
-								.current
+					if new_path != image.current {
+						while new_path.exists() {
+							let name_before_renaming = new_path.clone();
+
+							let mut new_name = String::from(
+								new_path
+									.as_path()
+									.file_stem()
+									.unwrap_or_default()
+									.to_str()
+									.unwrap_or_default(),
+							);
+							new_name += "-fa_";
+
+							let mut rng_limit = rand::thread_rng();
+							for _ in 1..rng_limit.gen_range(6, 12) {
+								let mut rng_item = rand::thread_rng();
+								new_name
+									.push(crate::ALPHABET.chars().choose(&mut rng_item).unwrap());
+							}
+
+							new_name += ".";
+							new_name += new_path
 								.as_path()
-								.file_stem()
+								.extension()
 								.unwrap_or_default()
 								.to_str()
-								.unwrap_or_default(),
-						);
-						new_name += "-fa_";
+								.unwrap_or_default();
 
-						let mut rng_limit = rand::thread_rng();
-						for _ in 1..rng_limit.gen_range(6, 12) {
-							let mut rng_item = rand::thread_rng();
-							new_name.push(crate::ALPHABET.chars().choose(&mut rng_item).unwrap());
+							new_path.set_file_name(new_name);
+
+							charlie_buffalo::push(
+								&logger,
+								vec![
+									crate::LogLevel::INFO.into(),
+									charlie_buffalo::Flag::from("RENAMING").into(),
+									charlie_buffalo::Attr::new("component", "webview").into(),
+									charlie_buffalo::Attr::new("event", "do_move").into(),
+								],
+								Some(&format!(
+									"file {} already exists, renaming it to {}",
+									name_before_renaming.display(),
+									new_path.display()
+								)),
+							);
 						}
 
-						new_name += ".";
-						new_name += image
-							.current
-							.as_path()
-							.extension()
-							.unwrap_or_default()
-							.to_str()
-							.unwrap_or_default();
-
-						new_path.push(new_name);
-					}
-
-					charlie_buffalo::push(
-						&logger,
-						vec![
-							crate::LogLevel::DEBUG.into(),
-							charlie_buffalo::Attr::new("component", "webview").into(),
-							charlie_buffalo::Attr::new("event", "do_move").into(),
-						],
-						Some(&format!(
-							"attempting to move {:?} in {:?}",
-							&image.current, &new_path
-						)),
-					);
-
-					if let Some(folder) = new_path.parent() {
-						std::fs::create_dir_all(folder).unwrap();
-					}
-
-					if std::fs::copy(&image.current, &new_path).is_err() {
-						println!(
-							"INFO: can not copy file {:?} to {:?}",
-							&image.current, &new_path
-						);
-					} else {
 						charlie_buffalo::push(
 							&logger,
 							vec![
@@ -84,15 +83,29 @@ pub fn do_move(
 								charlie_buffalo::Attr::new("event", "do_move").into(),
 							],
 							Some(&format!(
-								"file {:?} successfully copied to {:?}",
-								&image.current, &new_path
+								"attempting to move {} in {}",
+								image.current.display(),
+								new_path.display()
 							)),
 						);
 
-						if trash::remove(&image.current).is_err() {
-							println!(
-								"INFO: can not move file {:?} to trash (after copied it)",
-								&image.current
+						if let Some(folder) = new_path.parent() {
+							std::fs::create_dir_all(folder).unwrap();
+						}
+
+						if std::fs::copy(&image.current, &new_path).is_err() {
+							charlie_buffalo::push(
+								&logger,
+								vec![
+									crate::LogLevel::INFO.into(),
+									charlie_buffalo::Attr::new("component", "webview").into(),
+									charlie_buffalo::Attr::new("event", "do_move").into(),
+								],
+								Some(&format!(
+									"can not copy file {} to {}",
+									image.current.display(),
+									new_path.display()
+								)),
 							);
 						} else {
 							charlie_buffalo::push(
@@ -103,16 +116,68 @@ pub fn do_move(
 									charlie_buffalo::Attr::new("event", "do_move").into(),
 								],
 								Some(&format!(
-									"file {:?} moved to trash (after copied it)",
-									&image.current
+									"file {} successfully copied to {}",
+									image.current.display(),
+									new_path.display()
 								)),
 							);
-						}
-					}
 
-					local_user_data.images[position].current = new_path;
+							if trash::remove(&image.current).is_err() {
+								charlie_buffalo::push(
+									&logger,
+									vec![
+										crate::LogLevel::INFO.into(),
+										charlie_buffalo::Attr::new("component", "webview").into(),
+										charlie_buffalo::Attr::new("event", "do_move").into(),
+									],
+									Some(&format!(
+										"can not move file {} to trash (after copied it)",
+										image.current.display()
+									)),
+								);
+							} else {
+								charlie_buffalo::push(
+									&logger,
+									vec![
+										crate::LogLevel::DEBUG.into(),
+										charlie_buffalo::Attr::new("component", "webview").into(),
+										charlie_buffalo::Attr::new("event", "do_move").into(),
+									],
+									Some(&format!(
+										"file {} moved to trash (after copied it)",
+										image.current.display()
+									)),
+								);
+							}
+						}
+
+						local_user_data.images[position].current = new_path;
+					} else {
+						charlie_buffalo::push(
+							&logger,
+							vec![
+								crate::LogLevel::INFO.into(),
+								charlie_buffalo::Attr::new("component", "webview").into(),
+								charlie_buffalo::Attr::new("event", "do_move").into(),
+							],
+							Some(&format!(
+								"The file is already in {}, so we don't move it",
+								image.current.display()
+							)),
+						);
+					}
 				}
-				None => eprintln!("ERROR: can not get image information in order to move it"),
+				None => {
+					charlie_buffalo::push(
+						&logger,
+						vec![
+							crate::LogLevel::ERROR.into(),
+							charlie_buffalo::Attr::new("component", "webview").into(),
+							charlie_buffalo::Attr::new("event", "do_move").into(),
+						],
+						Some("can not get image information in order to move it"),
+					);
+				}
 			}
 		}
 	}

@@ -50,7 +50,7 @@ pub fn browse_target_folders(
 															.into(),
 														],
 														Some(&format!(
-															"adding file {:?}",
+															"adding file {}",
 															&file_name
 														)),
 													);
@@ -63,7 +63,7 @@ pub fn browse_target_folders(
 															charlie_buffalo::Attr::new("component", "webview").into(),
 															charlie_buffalo::Attr::new("event", "browse_target_folders").into(),
 														],
-														Some(&format!("file {:?} does not match file filter regex", &file_name)),
+														Some(&format!("file {} does not match file filter regex", &file_name)),
 													);
 
 													return false;
@@ -108,8 +108,8 @@ pub fn browse_target_folders(
 												.into(),
 											],
 											Some(&format!(
-												"can not get file name of {:?}",
-												i.current
+												"can not get file name of {}",
+												i.current.display()
 											)),
 										);
 
@@ -128,7 +128,7 @@ pub fn browse_target_folders(
 											)
 											.into(),
 										],
-										Some(&format!("{:?} is not a file", i.current)),
+										Some(&format!("{} is not a file", i.current.display())),
 									);
 
 									return false;

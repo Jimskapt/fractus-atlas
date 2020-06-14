@@ -166,16 +166,16 @@ impl CliInstructions {
 		if !working_folder.exists() {
 			if result.debug {
 				println!(
-					"INFO: working folder {:?} does not exists, attempting to create it",
-					working_folder
+					"INFO: working folder {} does not exists, attempting to create it",
+					working_folder.display()
 				);
 				println!();
 			}
 
 			std::fs::create_dir_all(&working_folder).unwrap_or_else(|_| {
 				panic!(
-					"INFO: can not creating working folder : {:?}",
-					&working_folder
+					"INFO: can not creating working folder : {}",
+					working_folder.display()
 				)
 			});
 		}
@@ -237,11 +237,21 @@ impl CliInstructions {
 					format!("{}", chrono::offset::Local::now()),
 				);
 
-				if show_logs
-					|| new_log.attributes.get("level").unwrap_or(
-						&charlie_buffalo::ValueAsString::as_string(&crate::LogLevel::INFO),
-					) > &charlie_buffalo::ValueAsString::as_string(&crate::LogLevel::DEBUG)
-				{
+				let log_int_value: usize = new_log
+					.attributes
+					.get("level")
+					.unwrap_or(&charlie_buffalo::ValueAsString::as_string(
+						&crate::LogLevel::INFO,
+					))
+					.parse()
+					.unwrap_or_default();
+
+				let debug_int_value: usize =
+					charlie_buffalo::ValueAsString::as_string(&crate::LogLevel::DEBUG)
+						.parse()
+						.unwrap_or_default();
+
+				if show_logs || log_int_value > debug_int_value {
 					println!("{}", new_log);
 				}
 
@@ -312,7 +322,7 @@ impl CliInstructions {
 				charlie_buffalo::Attr::new("component", "app").into(),
 				charlie_buffalo::Attr::new("stage", "configuration").into(),
 			],
-			Some(&format!("filter regex is {:?}", result.filter)),
+			Some(&format!("filter regex is {}", result.filter)),
 		);
 		charlie_buffalo::push(
 			&logger,
@@ -321,7 +331,7 @@ impl CliInstructions {
 				charlie_buffalo::Attr::new("component", "app").into(),
 				charlie_buffalo::Attr::new("stage", "configuration").into(),
 			],
-			Some(&format!("working folder is {:?}", result.working_folder)),
+			Some(&format!("working folder is {}", result.working_folder)),
 		);
 		charlie_buffalo::push(
 			&logger,
@@ -330,7 +340,7 @@ impl CliInstructions {
 				charlie_buffalo::Attr::new("component", "app").into(),
 				charlie_buffalo::Attr::new("stage", "configuration").into(),
 			],
-			Some(&format!("sorting files by {:?}", result.sort)),
+			Some(&format!("sorting files by {}", result.sort)),
 		);
 
 		return (result, logger);

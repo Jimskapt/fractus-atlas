@@ -105,7 +105,7 @@ impl
 												.into(),
 										],
 										Some(&format!(
-											"can not create file {:?} (this is not fatal) because : {}",
+											"can not create file {} (this is not fatal) because : {}",
 											&instructions.configuration_path, e
 										)),
 									);
@@ -122,8 +122,9 @@ impl
 								charlie_buffalo::Attr::new("stage", "configuration").into(),
 							],
 							Some(&format!(
-								"can not create folder {:?} (this is not fatal) because : {}",
-								&folder, e
+								"can not create folder {} (this is not fatal) because : {}",
+								folder.display(),
+								e
 							)),
 						);
 					}

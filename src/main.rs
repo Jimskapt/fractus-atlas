@@ -1,6 +1,5 @@
 /* TODO :
 - translations ?
-- can move back after move
 - open current file in external
 - fix manual target path field change
 - add delete button on target fields
@@ -8,7 +7,7 @@
 - support for multiple paths like `/home/user/{folder1,folder2}/src/`
 - fix case_insensitive for file filter regex
 - notification center
-- fix call limits on backend
+- set call limits on backend
 - create a buffer file in each target root ? (faster next loading, followed by async update)
 - listen file changes in targets
 */

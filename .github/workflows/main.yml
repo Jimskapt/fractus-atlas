@@ -1,5 +1,8 @@
 name: Rust cargo multi-platform compilation
 
+env:
+  CARGO_TERM_COLOR: always
+
 on:
   push:
     branches: [ master ]
@@ -7,7 +10,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build-window:
+  build:
     name: Build
     runs-on: ${{ matrix.os }}
     strategy:
