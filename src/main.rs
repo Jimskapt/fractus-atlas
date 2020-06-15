@@ -6,10 +6,10 @@
 - waiting window ?
 - support for multiple paths like `/home/user/{folder1,folder2}/src/`
 - fix case_insensitive for file filter regex
-- notification center
 - set call limits on backend
 - create a buffer file in each target root ? (faster next loading, followed by async update)
 - listen file changes in targets
+- finishing implementing arguments options in cli_parsing
 */
 
 #![allow(clippy::needless_return)]
@@ -22,14 +22,21 @@ use std::sync::{Arc, Mutex};
 
 mod cli_parsing;
 mod configuration;
+mod logger;
 mod user_data;
 mod webserver;
 mod window;
 
+use logger::LogLevel;
+
 fn main() {
 	human_panic::setup_panic!();
 
-	let (instructions, logger) = cli_parsing::CliInstructions::new();
+	let (instructions, temp_logs) = cli_parsing::CliInstructions::new();
+	let logger = crate::logger::new(&instructions);
+	for (attributes, content) in temp_logs {
+		charlie_buffalo::push(&logger, attributes, Some(&content));
+	}
 	let configuration = configuration::Configuration::from((&instructions, logger.clone()));
 
 	let mut rng = rand::thread_rng();
@@ -56,42 +63,3 @@ fn main() {
 }
 
 const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz-0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-#[derive(serde::Serialize)]
-pub enum LogLevel {
-	DEBUG,
-	INFO,
-	WARN,
-	ERROR,
-	PANIC,
-}
-
-impl charlie_buffalo::ValueAsString for LogLevel {
-	fn as_string(&self) -> String {
-		format!(
-			"{}",
-			match self {
-				LogLevel::DEBUG => 10,
-				LogLevel::INFO => 20,
-				LogLevel::WARN => 30,
-				LogLevel::ERROR => 40,
-				LogLevel::PANIC => 50,
-			}
-		)
-	}
-}
-
-impl std::cmp::PartialEq<LogLevel> for &String {
-	fn eq(&self, other: &LogLevel) -> bool {
-		*self == &charlie_buffalo::ValueAsString::as_string(other)
-	}
-}
-
-impl std::convert::Into<(String, String)> for LogLevel {
-	fn into(self) -> (String, String) {
-		return (
-			String::from("level"),
-			charlie_buffalo::ValueAsString::as_string(&self),
-		);
-	}
-}

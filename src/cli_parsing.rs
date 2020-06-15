@@ -1,3 +1,5 @@
+type TemporaryLog = (Vec<(String, String)>, String);
+
 #[derive(Clone)]
 pub struct CliInstructions {
 	pub debug: bool,
@@ -37,8 +39,9 @@ impl Default for CliInstructions {
 	}
 }
 impl CliInstructions {
-	pub fn new() -> (Self, charlie_buffalo::ConcurrentLogger) {
+	pub fn new() -> (Self, Vec<TemporaryLog>) {
 		let mut result = CliInstructions::default();
+		let mut logs = vec![];
 
 		let default_targets = result.targets.join(",");
 
@@ -164,19 +167,19 @@ impl CliInstructions {
 
 		let working_folder = std::path::Path::new(&result.working_folder);
 		if !working_folder.exists() {
-			if result.debug {
-				println!(
-					"INFO: working folder {} does not exists, attempting to create it",
+			logs.push((
+				vec![crate::LogLevel::INFO.into()],
+				format!(
+					"working folder {} does not exists, attempting to create it",
 					working_folder.display()
-				);
-				println!();
-			}
+				),
+			));
 
 			std::fs::create_dir_all(&working_folder).unwrap_or_else(|_| {
 				panic!(
-					"INFO: can not creating working folder : {}",
+					"can not creating working folder : {}",
 					working_folder.display()
-				)
+				);
 			});
 		}
 
@@ -188,161 +191,58 @@ impl CliInstructions {
 				.unwrap_or_default(),
 		);
 
-		let mut logpath = std::path::PathBuf::from(&result.working_folder);
-		logpath.push("logs.msgpack");
-		let logpath_for_buffer = logpath.clone();
-		let logpath_for_drop = logpath;
-		let show_logs = result.debug;
-
-		// This buffer is used to centralize receive of logs and write them asynchronously.
-		let (buffer_tx, buffer_rx) = std::sync::mpsc::channel::<charlie_buffalo::Log>();
-		std::thread::spawn(move || {
-			let mut result: Vec<charlie_buffalo::Log> = rmp_serde::decode::from_slice(
-				std::fs::read(&logpath_for_buffer)
-					.unwrap_or_default()
-					.as_slice(),
-			)
-			.unwrap_or_default();
-
-			let mut do_write = false;
-
-			loop {
-				match buffer_rx.recv_timeout(std::time::Duration::from_millis(10)) {
-					Ok(log) => {
-						result.push(log);
-
-						do_write = true;
-					}
-					Err(_) => {
-						if do_write {
-							std::fs::write(
-								&logpath_for_buffer,
-								rmp_serde::encode::to_vec(&result).unwrap(),
-							)
-							.unwrap();
-
-							do_write = false;
-						}
-					}
-				}
-			}
-		});
-
-		let logger = charlie_buffalo::concurrent_logger_from(charlie_buffalo::Logger::new(
-			charlie_buffalo::new_dispatcher(Box::from(move |log: charlie_buffalo::Log| {
-				let mut new_log = log;
-
-				new_log.attributes.insert(
-					String::from("time"),
-					format!("{}", chrono::offset::Local::now()),
-				);
-
-				let log_int_value: usize = new_log
-					.attributes
-					.get("level")
-					.unwrap_or(&charlie_buffalo::ValueAsString::as_string(
-						&crate::LogLevel::INFO,
-					))
-					.parse()
-					.unwrap_or_default();
-
-				let debug_int_value: usize =
-					charlie_buffalo::ValueAsString::as_string(&crate::LogLevel::DEBUG)
-						.parse()
-						.unwrap_or_default();
-
-				if show_logs || log_int_value > debug_int_value {
-					println!("{}", new_log);
-				}
-
-				buffer_tx.send(new_log).unwrap();
-			})),
-			charlie_buffalo::new_dropper(Box::from(move |_logger: &charlie_buffalo::Logger| {
-				// The async buffer can't write this log before overall drop,
-				// so we do this synchronously.
-				let mut logs: Vec<charlie_buffalo::Log> = rmp_serde::decode::from_slice(
-					std::fs::read(&logpath_for_drop)
-						.unwrap_or_default()
-						.as_slice(),
-				)
-				.unwrap_or_default();
-
-				logs.push(charlie_buffalo::Log::from((
-					vec![
-						crate::LogLevel::DEBUG.into(),
-						charlie_buffalo::Attr::new("stage", "stop").into(),
-					],
-					Some("stopping the app"),
-				)));
-
-				std::fs::write(&logpath_for_drop, rmp_serde::encode::to_vec(&logs).unwrap())
-					.unwrap();
-
-				println!(
-					"\n(logs should be inside file {})\n",
-					&logpath_for_drop.as_path().to_str().unwrap()
-				);
-			})),
-		));
-
-		charlie_buffalo::push(
-			&logger,
+		logs.push((
 			vec![
 				crate::LogLevel::DEBUG.into(),
 				charlie_buffalo::Attr::new("component", "app").into(),
 				charlie_buffalo::Attr::new("stage", "startup").into(),
 			],
-			Some("running up the app"),
-		);
+			"running up the app".into(),
+		));
 
 		if result.debug {
-			charlie_buffalo::push(
-				&logger,
+			logs.push((
 				vec![
 					crate::LogLevel::DEBUG.into(),
 					charlie_buffalo::Attr::new("component", "app").into(),
 				],
-				Some("debug mode activated"),
-			);
+				"debug mode activated".into(),
+			));
 		}
 
-		charlie_buffalo::push(
-			&logger,
+		logs.push((
 			vec![
 				crate::LogLevel::DEBUG.into(),
 				charlie_buffalo::Attr::new("component", "app").into(),
 				charlie_buffalo::Attr::new("stage", "configuration").into(),
 			],
-			Some(&format!("root targets are {:?}", result.targets)),
-		);
-		charlie_buffalo::push(
-			&logger,
+			format!("root targets are {:?}", result.targets),
+		));
+		logs.push((
 			vec![
 				crate::LogLevel::DEBUG.into(),
 				charlie_buffalo::Attr::new("component", "app").into(),
 				charlie_buffalo::Attr::new("stage", "configuration").into(),
 			],
-			Some(&format!("filter regex is {}", result.filter)),
-		);
-		charlie_buffalo::push(
-			&logger,
+			format!("filter regex is {}", result.filter),
+		));
+		logs.push((
 			vec![
 				crate::LogLevel::DEBUG.into(),
 				charlie_buffalo::Attr::new("component", "app").into(),
 				charlie_buffalo::Attr::new("stage", "configuration").into(),
 			],
-			Some(&format!("working folder is {}", result.working_folder)),
-		);
-		charlie_buffalo::push(
-			&logger,
+			format!("working folder is {}", result.working_folder),
+		));
+		logs.push((
 			vec![
 				crate::LogLevel::DEBUG.into(),
 				charlie_buffalo::Attr::new("component", "app").into(),
 				charlie_buffalo::Attr::new("stage", "configuration").into(),
 			],
-			Some(&format!("sorting files by {}", result.sort)),
-		);
+			format!("sorting files by {}", result.sort),
+		));
 
-		return (result, logger);
+		return (result, logs);
 	}
 }

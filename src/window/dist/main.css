@@ -193,3 +193,33 @@ article #no-images-error button {
 #open_window #target_folders_inputs button {
 	width: 19%;
 }
+
+.toast {
+	position: absolute;
+	width: 70vw;
+	left: 15vw;
+	bottom: 100px;
+	padding: 0.5em;
+	border-radius: 0.5em;
+	background-color: black;
+	color: white;
+	cursor: pointer;
+	opacity: 0.8;
+}
+
+.toast:hover {
+	opacity: 0.2;
+}
+
+.toast.info {
+	background-color: cornflowerblue;
+}
+
+.toast.success {
+	background-color: limegreen;
+	color: black;
+}
+
+.toast.error {
+	background-color: darkred;
+}

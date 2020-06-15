@@ -8,6 +8,7 @@ pub fn do_move(
 	into: String,
 ) {
 	let working_folder = std::path::PathBuf::from(&working_folder);
+	let mut toasts = String::new();
 
 	{
 		let mut local_user_data = webview.user_data_mut().lock().unwrap();
@@ -73,6 +74,13 @@ pub fn do_move(
 									new_path.display()
 								)),
 							);
+
+							toasts += "ToastCenter.data.items.push('";
+							toasts += &format!("<strong>{}</strong> already exists, renaming it to <strong>{}</strong>",
+								name_before_renaming.file_name().unwrap_or_default().to_string_lossy(),
+								new_path.file_name().unwrap_or_default().to_string_lossy()
+							);
+							toasts += "', 8000, {class: 'toast info'});\n";
 						}
 
 						charlie_buffalo::push(
@@ -135,6 +143,16 @@ pub fn do_move(
 										image.current.display()
 									)),
 								);
+
+								if into == "*move_back_to_origin*" {
+									toasts += "ToastCenter.data.items.push('";
+									toasts += "⚠ file copied back <strong>to its origin</strong> but can not be deleted in (old) moved folder.";
+									toasts += "', -1, {classes: 'toast info'});\n";
+								} else {
+									toasts += "ToastCenter.data.items.push('";
+									toasts += &format!("⚠ file copied in <strong>{}</strong> but can not be deleted in its source folder.", into);
+									toasts += "', -1, {classes: 'toast info'});\n";
+								}
 							} else {
 								charlie_buffalo::push(
 									&logger,
@@ -148,6 +166,24 @@ pub fn do_move(
 										image.current.display()
 									)),
 								);
+
+								if into == "*move_back_to_origin*" {
+									toasts += "ToastCenter.data.items.push('";
+									toasts += "⏪ successfully <strong>moved back</strong>.";
+									toasts += "', 2000, {classes: 'toast success'});\n";
+								} else {
+									toasts += "ToastCenter.data.items.push('";
+									toasts += &format!(
+										"🚚 successfully moved <i>{}</i> in <strong>{}</strong>.",
+										image
+											.current
+											.file_name()
+											.unwrap_or_default()
+											.to_string_lossy(),
+										&into
+									);
+									toasts += "', 2000, {classes: 'toast success'});\n";
+								}
 							}
 						}
 
@@ -210,8 +246,9 @@ pub fn do_move(
 	let js_instructions = format!(
 		"App.remote.send('Next');
 App.methods.toggle_move_window();
-App.remote.receive.set_folders({});",
-		&folders_buffer
+App.remote.receive.set_folders({});
+{}",
+		&folders_buffer, &toasts
 	);
 
 	crate::window::run_js(webview, &js_instructions, logger).unwrap();

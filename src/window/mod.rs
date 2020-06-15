@@ -14,6 +14,18 @@ pub fn run(
 			&format!("<script>{}</script>", include_str!("dist/main.js")),
 		)
 		.replace(
+			r#"<script src="error_image.js"></script>"#,
+			&format!("<script>{}</script>", include_str!("dist/error_image.js")),
+		)
+		.replace(
+			r#"<script src="app.js"></script>"#,
+			&format!("<script>{}</script>", include_str!("dist/app.js")),
+		)
+		.replace(
+			r#"<script src="toasts.js"></script>"#,
+			&format!("<script>{}</script>", include_str!("dist/toasts.js")),
+		)
+		.replace(
 			r#"<link rel="stylesheet" href="main.css">"#,
 			&format!(
 				"<style type=\"text/css\">{}</style>",
