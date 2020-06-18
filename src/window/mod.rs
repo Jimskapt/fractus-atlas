@@ -135,7 +135,7 @@ pub fn run(
 
 			let mut targets_buffer = String::from("[");
 			targets_buffer += &targets
-				.into_iter()
+				.iter()
 				.map(|target| format!("{}", web_view::escape(&target)))
 				.collect::<Vec<String>>()
 				.join(",");
@@ -160,13 +160,13 @@ pub fn run(
 				}
 			}
 
-			let mut folders_buffer = String::from("['");
-			folders_buffer += &folders.join("','");
-			folders_buffer += "']";
-
-			if folders_buffer == "['']" {
-				folders_buffer = String::from("[]");
-			}
+			let mut folders_buffer = String::from("[");
+			folders_buffer += &folders
+				.iter()
+				.map(|target| format!("{}", web_view::escape(&target)))
+				.collect::<Vec<String>>()
+				.join(",");
+			folders_buffer += "]";
 
 			// ****** sending ******
 
@@ -177,7 +177,7 @@ App.data.debug = {};
 App.data.internal_server_port = {};
 
 App.remote.receive.set_targets({});
-App.remote.receive.set_folders({});
+App.remote.receive.set_move_folders({});
 
 App.methods.do_open(false);
 

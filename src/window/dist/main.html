@@ -16,7 +16,9 @@
 			<input type="number" id="position_input" onchange="App.methods.request_position_change();" /> / <span
 				id="max_counter"></span>
 			<button onclick="App.methods.toggle_open_window()" title="open other(s) folder(s)">📂</button>
+			<button onclick="App.remote.send('Previous')" id="secondary_previous" title="go to previous image">⬅</button>
 			<button onclick="App.remote.send('Random')" title="go to random image" id="header_random">🔀</button>
+			<button onclick="App.remote.send('Next')" id="secondary_next" title="go to next image">➡</button>
 			<button onclick="App.methods.toggle_move_window()" title="move this image" id="header_move">🚚</button>
 		</span>
 	</header>
@@ -40,7 +42,11 @@
 
 	<div id="move_window" class="popup_window" style="display: none;">
 		<input type="text" id="move_search" />
-		<p>Move current image in selected folder :</p>
+		<p>
+			<button onclick="previous_move_folder()" title="select previous folder in list">⬆</button>
+			<button onclick="next_move_folder()" title="select next folder in list">⬇</button>
+			move current image in selected folder :
+		</p>
 		<div id="move_search_results"></div>
 		<div class="window_actions">
 			<button onclick="App.methods.toggle_move_window()" id="move_abort" class="abort_action">❌ Abort</button>

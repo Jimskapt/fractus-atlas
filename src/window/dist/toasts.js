@@ -1,5 +1,7 @@
 // this file will be included in /src/window/dist/main.html by /src/window/mod.rs:run
 
+'use strict';
+
 let ToastCenter = {
 	data: {
 		items: {

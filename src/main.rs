@@ -10,6 +10,16 @@
 - create a buffer file in each target root ? (faster next loading, followed by async update)
 - listen file changes in targets
 - finishing implementing arguments options in cli_parsing
+- center image
+- serve custom css from working_folder/custom.css ?
+- or light/dark theme ? or both ?
+- display move folders as big button with folder icon ? maybe custom icon ?
+- can specify sort in open window
+- send and use token with front-end ?
+- display icon if file already in working folder
+- sort move list by child files count ?
+- can remove keyword with `-keyword` in move search
+- allow separators for multiple search for move
 */
 
 #![allow(clippy::needless_return)]

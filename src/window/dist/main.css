@@ -146,6 +146,28 @@ article #no-images-error button {
 	border-radius: 0.5em;
 }
 
+#move_search_results label {
+	display: block;
+	padding-bottom: 0.25em;
+	font-size: 1.25em;
+	cursor: pointer;
+}
+
+#move_search_results label:hover {
+	opacity: 0.6;
+}
+
+#move_window label.special {
+	color: aqua;
+	font-style: italic;
+}
+
+#move_window span.highlight {
+	background-color: burlywood;
+	color: black;
+	border-radius: 4px;
+}
+
 .popup_window .window_actions {
 	text-align: center;
 }
@@ -196,15 +218,19 @@ article #no-images-error button {
 
 .toast {
 	position: absolute;
-	width: 70vw;
-	left: 15vw;
+	width: 80vw;
+	left: 10vw;
 	bottom: 100px;
-	padding: 0.5em;
+	padding: 1em;
 	border-radius: 0.5em;
+	font-size: 1.25em;
 	background-color: black;
 	color: white;
 	cursor: pointer;
 	opacity: 0.8;
+	text-align: center;
+	vertical-align: middle;
+	z-index: 100;
 }
 
 .toast:hover {

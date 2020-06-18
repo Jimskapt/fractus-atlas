@@ -8,7 +8,7 @@ setTimeout(function () {
 		App.remote.debug = true;
 		App.remote.receive.set_targets(['./target-1/', './target-2/', './target-3/']);
 		App.methods.do_open(false);
-		App.remote.receive.set_folders(['./folder-A/', './folder-B/', './folder-C/', './folder-D/']);
+		App.remote.receive.set_move_folders(['./folder-A/', './folder-B/', './folder-C/', './folder-D/']);
 
 		App.methods.refresh_image();
 	}
@@ -40,6 +40,50 @@ document.addEventListener("keyup", function (event) {
 	}
 });
 
+function previous_move_folder() {
+	const nodes = document.querySelectorAll('input[name="selected_folder"]');
+	let activate_previous = false;
+	for (let i = nodes.length - 1; i >= 0; i--) {
+		const node = nodes[i];
+
+		if (node.checked && i > 0) {
+			node.checked = false;
+			activate_previous = true;
+
+			continue;
+		}
+
+		if (activate_previous) {
+			node.checked = true;
+			activate_previous = false;
+			App.data.selected_folder.set(node.value);
+			break;
+		}
+	}
+}
+
+function next_move_folder() {
+	const nodes = document.querySelectorAll('input[name="selected_folder"]');
+	let activate_next = false;
+	for (let i = 0; i < nodes.length; i++) {
+		const node = nodes[i];
+
+		if (node.checked && i < (nodes.length - 1)) {
+			node.checked = false;
+			activate_next = true;
+
+			continue;
+		}
+
+		if (activate_next) {
+			node.checked = true;
+			activate_next = false;
+			App.data.selected_folder.set(node.value);
+			break;
+		}
+	}
+}
+
 document.addEventListener("DOMContentLoaded", function () {
 
 	setTimeout(function () {
@@ -51,53 +95,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
 		if (App.data.mode === 'move') {
 			if (event.keyCode === 38) { // UP
-				const nodes = document.querySelectorAll('input[name="selected_folder"]');
-				let activate_previous = false;
-				for (let i = nodes.length - 1; i >= 0; i--) {
-					const node = nodes[i];
-
-					if (node.checked && i > 0) {
-						node.checked = false;
-						activate_previous = true;
-
-						continue;
-					}
-
-					if (activate_previous) {
-						node.checked = true;
-						activate_previous = false;
-						App.data.selected_folder.set(node.value);
-						break;
-					}
-				}
+				previous_move_folder();
 			} else if (event.keyCode === 40) { // DOWN
-				const nodes = document.querySelectorAll('input[name="selected_folder"]');
-				let activate_next = false;
-				for (let i = 0; i < nodes.length; i++) {
-					const node = nodes[i];
-
-					if (node.checked && i < (nodes.length - 1)) {
-						node.checked = false;
-						activate_next = true;
-
-						continue;
-					}
-
-					if (activate_next) {
-						node.checked = true;
-						activate_next = false;
-						App.data.selected_folder.set(node.value);
-						break;
-					}
-				}
+				next_move_folder();
 			} else if (event.keyCode === 13) { // ENTER
-				App.methods.do_move();
+				if (!document.getElementById('move_ok').disabled) {
+					App.methods.do_move();
+				}
 			} else {
-				App.methods.refresh_folders_result(event.target.value);
+				App.methods.refresh_move_folders_results(event.target.value);
 			}
 		}
 
 	});
+
+	App.data.selected_folder.init();
 });
 
 // polyfills :

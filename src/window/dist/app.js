@@ -1,5 +1,7 @@
 // this file will be included in /src/window/dist/main.html by /src/window/mod.rs:run
 
+'use strict';
+
 let App = {
 	data: {
 		debug: false,
@@ -8,28 +10,39 @@ let App = {
 		active_image: '',
 		active_already_moved: false,
 		images_count: 0,
-		folders: [],
+		move_folders: [],
 		target_folders: [],
 		internal_server_port: undefined,
 		internal_server_token: '',
 		selected_folder: {
 			_value: '',
+			init: function() {
+				App.data.selected_folder.set('');
+			},
 			get: function () {
 				return App.data.selected_folder._value;
 			},
-			set: function (new_value) {
-				App.data.selected_folder._value = new_value;
-
-				if (App.data.selected_folder.get() === "") {
-					document.getElementById('confirmation-move').innerHTML = '';
-					document.getElementById('move_ok').disabled = true;
-				} else {
-					if (App.data.selected_folder.get() === '*move_back_to_origin*') {
-						document.getElementById('confirmation-move').innerHTML = 'Current image will be <strong>moved back inside its origin folder</strong>.';
-					} else {
-						document.getElementById('confirmation-move').innerHTML = 'Current image will be moved inside the `' + App.data.selected_folder.get() + '/` sub-folder of the working folder.';
+			set: function (new_value, propagate_break) {
+				if (new_value !== undefined && new_value !== null) {
+					App.data.selected_folder._value = new_value;
+					if (propagate_break !== true) {
+						App.methods.refresh_move_folders_results();
 					}
-					document.getElementById('move_ok').disabled = false;
+
+					console.log('new_value =', new_value);
+
+					if (new_value.trim() !== '') {
+						document.getElementById('move_ok').disabled = false;
+
+						if (App.data.selected_folder.get() === '*move_back_to_origin*') {
+							document.getElementById('confirmation-move').innerHTML = 'Current image will be <strong>moved back inside its origin folder</strong>.';
+						} else {
+							document.getElementById('confirmation-move').innerHTML = 'Current image will be moved inside the `' + App.data.selected_folder.get() + '/` sub-folder of the working folder.';
+						}
+					} else {
+						document.getElementById('move_ok').disabled = true;
+						document.getElementById('confirmation-move').innerHTML = '';
+					}
 				}
 			}
 		},
@@ -45,6 +58,8 @@ let App = {
 				document.getElementById("position_input").disabled = false;
 				document.getElementById("main_next").disabled = false;
 				document.getElementById("main_previous").disabled = false;
+				document.getElementById("secondary_next").disabled = false;
+				document.getElementById("secondary_previous").disabled = false;
 				document.getElementById("image").style.display = "block";
 				document.getElementById("no-images-error").style.display = "none";
 
@@ -56,6 +71,8 @@ let App = {
 				document.getElementById("position_input").disabled = true;
 				document.getElementById("main_next").disabled = true;
 				document.getElementById("main_previous").disabled = true;
+				document.getElementById("secondary_next").disabled = true;
+				document.getElementById("secondary_previous").disabled = true;
 				document.getElementById("image").style.display = "none";
 				document.getElementById("no-images-error").style.display = "block";
 
@@ -81,69 +98,66 @@ let App = {
 			}
 
 		},
-		refresh_folders_result: function (value) {
-			let found = 0;
-			let search_items = "";
-			let selected_is_inside = false;
+		refresh_move_folders_results: function (search_value) {
+			const move_search = document.getElementById('move_search');
 
-			const filtered_folders = App.data.folders.filter(function (folder) {
-				return value.trim() === "" || folder.trim().toLowerCase().includes(value.trim().toLowerCase());
-			});
+			if (search_value === undefined || search_value === null) {
+				search_value = move_search.value;
+			}
 
-			for (let i = 0; i < filtered_folders.length; i++) {
-				let folder = filtered_folders[i];
+			const sanitized = sanitize_folder_name(move_search.value.toLowerCase(), '-');
+			if (move_search.value !== sanitized) {
+				let selectionRange = {
+					start: move_search.selectionStart,
+					end: move_search.selectionEnd,
+					direction: move_search.selectionDirection,
+				};
+				move_search.value = sanitized;
+				move_search.setSelectionRange(selectionRange.start, selectionRange.end, selectionRange.direction);
 
-				search_items += '<label><input type="radio" name="selected_folder"';
+				App.methods.refresh_move_folders_results(sanitized);
+			} else {
+				const move_search_results = document.getElementById('move_search_results');
 
-				if (folder === App.data.selected_folder.get()) {
-					search_items += ' checked';
-					selected_is_inside = true;
+				while (move_search_results.firstChild) {
+					move_search_results.removeChild(move_search_results.lastChild);
 				}
 
-				search_items += ' value="' + folder + '" /> ' + folder + '</label><br>\n';
-				found++;
-			}
-
-			if (!selected_is_inside && App.data.folders.length > 0) {
-				App.data.selected_folder.set(filtered_folders[0]);
-			}
-
-			if (value.trim() !== "" && found <= 0) {
-				search_items += '<label><input type="radio" name="selected_folder" value="' + value + '" checked /> ' + value +
-					'</label><br>\n';
-				found++;
-
-				App.data.selected_folder.set(value);
-			}
-
-			if (App.data.active_already_moved) {
-				search_items += '<label><input type="radio" name="selected_folder" value="*move_back_to_origin*" /> <i>⏪ Move back to origin folder</i></label><br>\n';
-			}
-
-			document.getElementById('move_search_results').innerHTML = search_items;
-
-			if (App.data.selected_folder.get().trim() === '' || (!selected_is_inside && App.data.folders.length > 0)) {
-				// TODO : improve-it !
-				setTimeout(function () {
-					const el = document.querySelector('input[name="selected_folder"]');
-
-					if (el !== undefined && el !== null) {
-						el.checked = true;
+				let exact_match = false;
+				const filtered_folders = App.data.move_folders.filter(function(folder) {
+					if (folder === search_value) {
+						exact_match = true;
 					}
-				}, 300);
-			}
 
-			setTimeout(function () {
-				const elements = document.querySelectorAll('input[name="selected_folder"]');
+					return folder.includes(search_value) || search_value === '';
+				});
 
-				for (let i = 0; i < elements.length; i++) {
-					const el = elements[i];
-
-					el.addEventListener('change', function () {
-						App.data.selected_folder.set(el.value);
-					});
+				for (let i = 0; i < filtered_folders.length; i++) {
+					const target_folder = filtered_folders[i];
+					appendLabel(target_folder, target_folder);
 				}
-			}, 100);
+
+				if (!exact_match && search_value !== '') {
+					appendLabel(search_value, '📂 move in new folder « ' + search_value + ' »', true);
+				}
+
+				if (App.data.active_already_moved) {
+					appendLabel('*move_back_to_origin*', '⏪ move back to origin folder', true);
+				}
+
+				// need some time to render new DOM in browser before searching inside it ...
+				setTimeout(function() {
+					const search_if_one_checked = document.querySelector('input[type="radio"][name="selected_folder"]:checked');
+					if (search_if_one_checked === null || search_if_one_checked === undefined) {
+						const first_found = document.querySelector('input[type="radio"][name="selected_folder"]');
+						if (first_found !== undefined && first_found !== null) {
+							App.data.selected_folder.set(first_found.value);
+						} else {
+							App.data.selected_folder.set('', true);
+						}
+					}
+				}, 200);
+			}
 		},
 		toggle_move_window: function () {
 
@@ -155,7 +169,7 @@ let App = {
 
 			} else if (App.data.images_count > 0) {
 
-				App.methods.refresh_folders_result(document.getElementById('move_search').value);
+				App.methods.refresh_move_folders_results(document.getElementById('move_search').value);
 
 				App.data.mode = 'move';
 
@@ -233,9 +247,9 @@ let App = {
 				App.data.images_count = value;
 				App.methods.refresh_image();
 			},
-			set_folders: function (value) {
-				App.data.folders = value;
-				App.methods.refresh_folders_result(document.getElementById('move_search').value);
+			set_move_folders: function (value) {
+				App.data.move_folders = value;
+				App.methods.refresh_move_folders_results(document.getElementById('move_search').value);
 			},
 			set_active: function (position, path, token, is_active_already_moved) {
 				App.data.position = position;
@@ -317,3 +331,51 @@ let App = {
 		}
 	}
 };
+
+const allowed_folder_chars = "abcdefghijklmnopqrstuvwxyz-0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+function sanitize_folder_name(name, replacement) {
+	let result = "";
+
+	for (let i = 0; i < name.length; i++) {
+		const char = name[i];
+		if (allowed_folder_chars.indexOf(char) >= 0) {
+			result += char;
+		} else {
+			result += replacement;
+		}
+	}
+
+	return result;
+}
+
+function appendLabel(value, text_label, is_special) {
+	if (is_special !== true) {
+		is_special = false;
+	}
+
+	const label = document.createElement('label');
+	if (is_special) {
+		label.setAttribute('class', 'special');
+	}
+
+	const radio = document.createElement('input');
+	radio.setAttribute('type', 'radio');
+	radio.setAttribute('name', 'selected_folder');
+	radio.setAttribute('value', value);
+	if (App.data.selected_folder.get() === value) {
+		radio.setAttribute('checked', true);
+	}
+
+	radio.addEventListener('click', function() {
+		App.data.selected_folder.set(value);
+		App.methods.do_move();
+	});
+
+	const labelText = document.createTextNode(text_label);
+
+	label.appendChild(radio);
+	label.appendChild(labelText);
+
+	document.getElementById('move_search_results').appendChild(label);
+}
