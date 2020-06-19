@@ -28,8 +28,9 @@ pub fn run(
 		.replace(
 			r#"<link rel="stylesheet" href="main.css">"#,
 			&format!(
-				"<style type=\"text/css\">{}</style>",
-				include_str!("dist/main.css")
+				"<style type=\"text/css\">{}\n{}</style>",
+				include_str!("dist/main.css"),
+				configuration.custom_css
 			),
 		);
 
@@ -179,14 +180,11 @@ App.data.internal_server_port = {};
 App.remote.receive.set_targets({});
 App.remote.receive.set_move_folders({});
 
-App.methods.do_open(false);
-
-document.body.style.background = {};",
+App.methods.do_open(false);",
 				if instructions.debug { "true" } else { "false" },
 				internal_server_port,
 				&targets_buffer,
-				&folders_buffer,
-				web_view::escape(&configuration.background),
+				&folders_buffer
 			);
 
 			run_js(main_window, &js_instructions, logger_for_window)

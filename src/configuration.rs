@@ -1,11 +1,11 @@
 #[derive(Debug, serde_derive::Deserialize, serde_derive::Serialize)]
 pub struct Configuration {
-	pub background: String,
+	pub custom_css: String,
 }
 impl Default for Configuration {
 	fn default() -> Configuration {
 		Configuration {
-			background: String::from("#FFFFFF"),
+			custom_css: String::new(),
 		}
 	}
 }

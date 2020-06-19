@@ -9,10 +9,13 @@ setTimeout(function () {
 		App.remote.receive.set_targets(['./target-1/', './target-2/', './target-3/']);
 		App.methods.do_open(false);
 		App.remote.receive.set_move_folders(['./folder-A/', './folder-B/', './folder-C/', './folder-D/']);
+		App.data.internal_server_port = 4040;
+		App.remote.receive.set_images_count(1);
+		App.remote.receive.set_active(1, 'a/b/c/d.jpg', 'token', false);
 
 		App.methods.refresh_image();
 	}
-}, 1000);
+}, 2000);
 
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz-0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 

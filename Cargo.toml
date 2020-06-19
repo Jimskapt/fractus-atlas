@@ -1,6 +1,6 @@
 [package]
 name = "fractus-atlas"
-version = "1.7.0"
+version = "1.8.0"
 description = "An image viewer which allows you to quickly move them in folders."
 homepage = "https://github.com/Jimskapt/fractus-atlas"
 repository = "https://github.com/Jimskapt/fractus-atlas"

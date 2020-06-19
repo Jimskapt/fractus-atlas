@@ -8,6 +8,8 @@
 
 💾 You can download this program on [releases tab](https://github.com/Jimskapt/fractus-atlas/releases).
 
+[<img src="./doc/screenshots/01-home-windows.png" alt="Main Window" height="400" />](./doc/screenshots)
+
 🎥 You can see a video demonstration of this viewer (in top-left) on Youtube :
 
 [![Video demonstration](https://img.youtube.com/vi/GKd_zLJXMl4/0.jpg)](https://www.youtube.com/watch?v=GKd_zLJXMl4)

@@ -10,34 +10,37 @@
 
 <body>
 
-	<header>
-		<input type="text" readonly="readonly" id="imgpath" />
-		<span id="progress">
-			<input type="number" id="position_input" onchange="App.methods.request_position_change();" /> / <span
-				id="max_counter"></span>
-			<button onclick="App.methods.toggle_open_window()" title="open other(s) folder(s)">📂</button>
-			<button onclick="App.remote.send('Previous')" id="secondary_previous" title="go to previous image">⬅</button>
-			<button onclick="App.remote.send('Random')" title="go to random image" id="header_random">🔀</button>
-			<button onclick="App.remote.send('Next')" id="secondary_next" title="go to next image">➡</button>
-			<button onclick="App.methods.toggle_move_window()" title="move this image" id="header_move">🚚</button>
-		</span>
-	</header>
+	<div id="page">
+		<header>
+			<span id="progress">
+				<span class="item" id="position_display">
+					<input type="number" id="position_input" onchange="App.methods.request_position_change();" /> / <span id="max_counter">?</span>
+				</span>
+				<span class="separator">&nbsp;</span>
+				<button class="item" onclick="App.methods.toggle_open_window()" title="open other(s) folder(s)">📂</button>
+				<span class="separator">&nbsp;</span>
+				<button class="item" onclick="App.remote.send('Previous')" id="secondary_previous" title="go to previous image">⬅</button>
+				<button class="item" onclick="App.remote.send('Random')" title="go to random image" id="header_random">🔀</button>
+				<button class="item" onclick="App.remote.send('Next')" id="secondary_next" title="go to next image">➡</button>
+				<span class="separator">&nbsp;</span>
+				<button class="item" onclick="App.methods.toggle_move_window()" title="move this image" id="header_move">🚚</button>
+			</span>
+			<input type="text" readonly="readonly" id="imgpath" />
+		</header>
+
+		<article>
+			<img src="" id="image" alt="image" style="display: none;" />
+			<!--[if lt IE 11]>
+			<p style="" id="please_upgrade_ie">⚠ please upgrade Microsoft Internet Explorer to use this software</p>
+			<![endif]-->
+			<p id="no-images-error">
+				❌ There is no images in this targets.<br>
+				<button onclick="App.methods.toggle_open_window()">📂 Open other(s) folder(s)</button>
+			</p>
+		</article>
+	</div>
 
 	<button onclick="App.remote.send('Previous')" id="main_previous" title="go to previous image">⬅</button>
-
-	<article>
-		<img src="" id="image" alt="image" style="display: none;" />
-		<p id="no-images-error">
-			❌ There is no images in this targets.<br>
-			<button onclick="App.methods.toggle_open_window()">📂 Open other(s) folder(s)</button>
-		</p>
-		<!--[if lt IE 9]>
-		<p style="position: fixed; bottom: 0; width: 100vw;">
-			(please upgrade Microsoft Internet Explorer to continue using this software)
-		</p>
-		<![endif]-->
-	</article>
-
 	<button onclick="App.remote.send('Next')" id="main_next" title="go to next image">➡</button>
 
 	<div id="move_window" class="popup_window" style="display: none;">
