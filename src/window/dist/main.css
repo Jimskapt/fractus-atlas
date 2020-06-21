@@ -39,7 +39,8 @@ header .separator {
 	border-right: 1px solid rgb(112, 112, 112);
 }
 
-header button, header .separator {
+header button,
+header .separator {
 	font-size: 1.05em;
 }
 
@@ -67,11 +68,14 @@ header #imgpath {
 	margin-top: 0.5em;
 }
 
-header #imgpath, header #position_display, header #position_display * {
+header #imgpath,
+header #position_display,
+header #position_display * {
 	text-shadow: 0.15em 0.15em rgba(0, 0, 0, 0.2);
 }
 
-#position_display, header #position_display input[type="text"] {
+#position_display,
+header #position_display input[type="text"] {
 	font-size: 0.9em;
 }
 
@@ -104,10 +108,10 @@ button#main_next {
 	position: absolute;
 	top: 15vh;
 	height: 70vh;
-	width: 45vw;
+	width: 25vw;
 	border: 0;
 	font-size: 5em;
-	z-index: 5;
+	z-index: 10;
 	cursor: pointer;
 	background: none;
 	text-shadow: 0.1em 0.1em rgba(0, 0, 0, 0.1);
@@ -126,7 +130,8 @@ button#main_next {
 	padding-left: 1em;
 }
 
-button#main_previous:not(:disabled):hover, button#main_next:not(:disabled):hover {
+button#main_previous:not(:disabled):hover,
+button#main_next:not(:disabled):hover {
 	color: white;
 }
 
@@ -170,7 +175,7 @@ article #no-images-error button {
 
 .popup_window {
 	display: none;
-	z-index: 20;
+	z-index: 40;
 	background: rgba(0, 0, 0, 0.6);
 	color: white;
 	position: absolute;
@@ -280,7 +285,7 @@ article #no-images-error button {
 	opacity: 0.8;
 	text-align: center;
 	vertical-align: middle;
-	z-index: 40;
+	z-index: 20;
 	box-shadow: 0.3em 0.3em rgba(0, 0, 0, 0.2);
 }
 
@@ -299,4 +304,66 @@ article #no-images-error button {
 
 .toast.error {
 	background-color: darkred;
+}
+
+/* ============= CUSTOM MENU ============= */
+
+#custom_menu,
+#custom_menu * {
+	padding: 0;
+	margin: 0;
+}
+
+#custom_menu {
+	position: absolute;
+	display: none;
+	top: 50vw;
+	left: 50vh;
+	list-style: none;
+	opacity: 0.8;
+	z-index: 30;
+}
+
+#custom_menu li {
+	display: block;
+	cursor: pointer;
+	background: white;
+}
+
+#custom_menu li,
+#custom_menu li ul li {
+	display: block;
+	padding: 0.5em;
+	white-space: nowrap;
+	background: linear-gradient(to top, rgb(151, 151, 151), rgb(173, 173, 173));
+	border: 1px solid black;
+}
+
+#custom_menu li:hover,
+#custom_menu li ul li:hover {
+	border-color: white;
+}
+
+#custom_menu li>ul {
+	display: none;
+	position: absolute;
+	margin-left: 0;
+}
+
+#custom_menu li:hover>ul {
+	display: block;
+}
+
+#custom_menu li:hover label,
+#custom_menu li ul li:hover {
+	color: white;
+}
+
+#custom_menu ul {
+	left: 100%;
+	top: 0;
+}
+
+#custom_menu .active {
+	color: white;
 }

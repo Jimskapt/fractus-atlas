@@ -16,7 +16,7 @@ let App = {
 		internal_server_token: '',
 		selected_folder: {
 			_value: '',
-			init: function() {
+			init: function () {
 				App.data.selected_folder.set('');
 			},
 			get: function () {
@@ -28,8 +28,6 @@ let App = {
 					if (propagate_break !== true) {
 						App.methods.refresh_move_folders_results();
 					}
-
-					console.log('new_value =', new_value);
 
 					if (new_value.trim() !== '') {
 						document.getElementById('move_ok').disabled = false;
@@ -124,7 +122,7 @@ let App = {
 				}
 
 				let exact_match = false;
-				const filtered_folders = App.data.move_folders.filter(function(folder) {
+				const filtered_folders = App.data.move_folders.filter(function (folder) {
 					if (folder === search_value) {
 						exact_match = true;
 					}
@@ -146,7 +144,7 @@ let App = {
 				}
 
 				// need some time to render new DOM in browser before searching inside it ...
-				setTimeout(function() {
+				setTimeout(function () {
 					const search_if_one_checked = document.querySelector('input[type="radio"][name="selected_folder"]:checked');
 					if (search_if_one_checked === null || search_if_one_checked === undefined) {
 						const first_found = document.querySelector('input[type="radio"][name="selected_folder"]');
@@ -194,10 +192,15 @@ let App = {
 
 			}
 		},
-		do_move: function () {
+		do_move: function (toggle_popup_after) {
+			if (toggle_popup_after !== true && toggle_popup_after !== false) {
+				toggle_popup_after = true;
+			}
+
 			App.remote.send({
 				instruction: 'DoMove',
-				into: App.data.selected_folder.get()
+				into: App.data.selected_folder.get(),
+				toggle_popup: toggle_popup_after
 			});
 		},
 		do_open: function (toggle_window) {
@@ -250,6 +253,36 @@ let App = {
 			set_move_folders: function (value) {
 				App.data.move_folders = value;
 				App.methods.refresh_move_folders_results(document.getElementById('move_search').value);
+
+				const menu_move_list = document.getElementById('menu_move_list');
+				if (menu_move_list !== undefined && menu_move_list !== null) {
+					while (menu_move_list.firstChild) {
+						menu_move_list.removeChild(menu_move_list.lastChild);
+					}
+
+					const generateMenuItem = function (folder) {
+						const li = document.createElement('li');
+						li.textContent = folder;
+						li.addEventListener('click', function () {
+							App.data.selected_folder.set(folder);
+							App.methods.do_move(false);
+						});
+						return li;
+					};
+
+					if (App.data.selected_folder.get() !== '' && App.data.selected_folder.get() !== '*move_back_to_origin*') {
+						const li = generateMenuItem(App.data.selected_folder.get());
+						li.className = 'active';
+						menu_move_list.appendChild(li);
+					}
+
+					for (let i = 0; i < value.length; i++) {
+						const li = generateMenuItem(value[i]);
+						if (value[i] !== App.data.selected_folder.get()) {
+							menu_move_list.appendChild(li);
+						}
+					}
+				}
 			},
 			set_active: function (position, path, token, is_active_already_moved) {
 				App.data.position = position;
@@ -367,7 +400,7 @@ function appendLabel(value, text_label, is_special) {
 		radio.setAttribute('checked', true);
 	}
 
-	radio.addEventListener('click', function() {
+	radio.addEventListener('click', function () {
 		App.data.selected_folder.set(value);
 		App.methods.do_move();
 	});

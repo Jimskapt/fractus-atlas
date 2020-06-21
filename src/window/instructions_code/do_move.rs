@@ -6,6 +6,7 @@ pub fn do_move(
 	logger: charlie_buffalo::ConcurrentLogger,
 	working_folder: String,
 	into: String,
+	toggle_popup: bool,
 ) {
 	let into = if into == "*move_back_to_origin*" {
 		into
@@ -258,13 +259,16 @@ pub fn do_move(
 			.join(",");
 		folders_buffer += "]";
 
-		let js_instructions = format!(
+		let mut js_instructions = format!(
 			"App.remote.send('Next');
-	App.methods.toggle_move_window();
-	App.remote.receive.set_move_folders({});
-	{}",
+App.remote.receive.set_move_folders({});
+{}",
 			&folders_buffer, &toasts
 		);
+
+		if toggle_popup {
+			js_instructions += "\nApp.methods.toggle_move_window();";
+		}
 
 		crate::window::run_js(webview, &js_instructions, logger).unwrap();
 	} else {

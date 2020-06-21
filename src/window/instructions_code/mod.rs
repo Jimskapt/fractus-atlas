@@ -25,6 +25,7 @@ pub enum Instruction {
 	},
 	DoMove {
 		into: String,
+		toggle_popup: bool,
 	},
 	ShowBrowseTarget {
 		id: usize,

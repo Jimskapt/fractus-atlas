@@ -8,7 +8,7 @@ setTimeout(function () {
 		App.remote.debug = true;
 		App.remote.receive.set_targets(['./target-1/', './target-2/', './target-3/']);
 		App.methods.do_open(false);
-		App.remote.receive.set_move_folders(['./folder-A/', './folder-B/', './folder-C/', './folder-D/']);
+		App.remote.receive.set_move_folders(['folder-A', 'folder-B', 'folder-C', 'folder-D']);
 		App.data.internal_server_port = 4040;
 		App.remote.receive.set_images_count(1);
 		App.remote.receive.set_active(1, 'a/b/c/d.jpg', 'token', false);
@@ -92,6 +92,32 @@ document.addEventListener("DOMContentLoaded", function () {
 	setTimeout(function () {
 		document.getElementById('image').addEventListener('error', App.methods.image_not_found_error);
 	}, 1000);
+
+	const menu_click = function (e, button) {
+		if (button === undefined || button === null) {
+			button = 'left';
+		}
+
+		const custom_menu = document.getElementById('custom_menu');
+		if (custom_menu !== null && custom_menu !== undefined) {
+			if (e.target.id === 'image' && button === 'right') {
+				e.preventDefault();
+
+				custom_menu.style.display = 'block';
+				custom_menu.style.left = e.pageX + 'px';
+				custom_menu.style.top = e.pageY + 'px';
+			} else {
+				custom_menu.style.display = 'none';
+			}
+		}
+	};
+
+	document.addEventListener('click', function (e) {
+		menu_click(e, 'left');
+	});
+	document.addEventListener('contextmenu', function (e) {
+		menu_click(e, 'right');
+	});
 
 	document.getElementById('move_search').addEventListener('keyup', function (event) {
 		// console.log(event);

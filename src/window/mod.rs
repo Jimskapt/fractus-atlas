@@ -73,8 +73,8 @@ pub fn run(
 				instructions_code::Instruction::SetPosition { value } => {
 					instructions_code::set_position(webview, logger.clone(), value);
 				}
-				instructions_code::Instruction::DoMove { into } => {
-					instructions_code::do_move(webview, logger.clone(), instructions_for_window.working_folder.clone(), into);
+				instructions_code::Instruction::DoMove { into, toggle_popup } => {
+					instructions_code::do_move(webview, logger.clone(), instructions_for_window.working_folder.clone(), into, toggle_popup);
 				}
 				instructions_code::Instruction::ShowBrowseTarget { id } => {
 					instructions_code::show_browse_target(webview, logger.clone(), id);
@@ -84,13 +84,13 @@ pub fn run(
 					toggle_window,
 				} => {
 
-                    let file_regex = match regex::RegexBuilder::new(&instructions_for_window.filter)
-                        .case_insensitive(true)
-                        .build()
-                    {
-                        Ok(res) => res,
-                        Err(e) => {
-                            let default_regex = crate::cli_parsing::CliInstructions::default().filter;
+					let file_regex = match regex::RegexBuilder::new(&instructions_for_window.filter)
+						.case_insensitive(true)
+						.build()
+					{
+						Ok(res) => res,
+						Err(e) => {
+							let default_regex = crate::cli_parsing::CliInstructions::default().filter;
 							charlie_buffalo::push(&logger,
 								vec![
 									crate::LogLevel::INFO.into(),
@@ -100,12 +100,12 @@ pub fn run(
 								Some(&format!("compilation of filter regex {} has failed (falling back to default {}) because : {}", &instructions_for_window.filter, &default_regex, e)),
 							);
 
-                            regex::RegexBuilder::new(&default_regex)
-                                .case_insensitive(true)
-                                .build()
-                                .unwrap()
-                        }
-                    };
+							regex::RegexBuilder::new(&default_regex)
+								.case_insensitive(true)
+								.build()
+								.unwrap()
+						}
+					};
 
 					instructions_code::browse_target_folders(
 						webview,
@@ -121,7 +121,7 @@ pub fn run(
 			return Ok(());
 		})
 		.build()
-        .unwrap_or_else(|e| panic!("Can not build main window : {}", e));
+		.unwrap_or_else(|e| panic!("Can not build main window : {}", e));
 
 	let arc_for_dispatch = std::sync::Arc::clone(&user_data);
 	let logger_for_window = logger.clone();
@@ -129,11 +129,12 @@ pub fn run(
 	main_window
 		.handle()
 		.dispatch(move |main_window| {
-			let targets = arc_for_dispatch.lock().unwrap().targets.clone();
+			let mut targets = arc_for_dispatch.lock().unwrap().targets.clone();
 			let internal_server_port = arc_for_dispatch.lock().unwrap().internal_server_port;
 
 			// ****** TARGETS ******
 
+			targets.sort();
 			let mut targets_buffer = String::from("[");
 			targets_buffer += &targets
 				.iter()
