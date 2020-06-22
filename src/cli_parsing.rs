@@ -213,6 +213,7 @@ impl CliInstructions {
 		logs.push((
 			vec![
 				crate::LogLevel::DEBUG.into(),
+				charlie_buffalo::Flag::from("PRIVATE_DATA").into(),
 				charlie_buffalo::Attr::new("component", "app").into(),
 				charlie_buffalo::Attr::new("stage", "configuration").into(),
 			],

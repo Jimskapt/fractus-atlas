@@ -70,6 +70,7 @@ pub fn run(
 									&logger,
 									vec![
 										crate::LogLevel::ERROR.into(),
+										charlie_buffalo::Flag::from("PRIVATE_DATA").into(),
 										charlie_buffalo::Attr::new("component", "webserver").into(),
 									],
 									Some(&format!(

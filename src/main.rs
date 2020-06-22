@@ -1,20 +1,16 @@
 /* TODO :
 - translations ?
-- open current file in external
 - fix manual target path field change
-- add delete button on target fields
 - waiting window ?
 - support for multiple paths like `/home/user/{folder1,folder2}/src/`
 - fix case_insensitive for file filter regex
-- set call limits on backend
+- set call limits on backend ?
 - create a buffer file in each target root ? (faster next loading, followed by async update)
 - listen file changes in targets
 - finishing implementing arguments options in cli_parsing
-- center image
 - serve custom css from working_folder/custom.css ?
 - or light/dark theme ? or both ?
 - display move folders as big button with folder icon ? maybe custom icon ?
-- can specify sort in open window
 - send and use token with front-end ?
 - display icon if file already in working folder
 - sort move list by child files count ?

@@ -52,6 +52,8 @@ let App = {
 
 				document.getElementById("header_random").disabled = false;
 				document.getElementById("header_move").disabled = false;
+				document.getElementById("header_open_folder").disabled = false;
+				document.getElementById("header_open_file").disabled = false;
 
 				document.getElementById("position_input").disabled = false;
 				document.getElementById("main_next").disabled = false;
@@ -65,6 +67,8 @@ let App = {
 
 				document.getElementById("header_random").disabled = true;
 				document.getElementById("header_move").disabled = true;
+				document.getElementById("header_open_folder").disabled = true;
+				document.getElementById("header_open_file").disabled = true;
 
 				document.getElementById("position_input").disabled = true;
 				document.getElementById("main_next").disabled = true;
@@ -203,7 +207,7 @@ let App = {
 				toggle_popup: toggle_popup_after
 			});
 		},
-		do_open: function (toggle_window) {
+		browse_folders: function (toggle_window) {
 			if (toggle_window === undefined) {
 				toggle_window = true;
 			}
@@ -211,7 +215,18 @@ let App = {
 			App.remote.send({
 				instruction: 'BrowseTargetFolders',
 				folders: App.data.target_folders,
+				sort_order: document.getElementById('sort_targets_order').value,
 				toggle_window: toggle_window,
+			});
+		},
+		open_current_file: function () {
+			App.remote.send({
+				instruction: 'OpenCurrentFile'
+			});
+		},
+		open_current_folder: function () {
+			App.remote.send({
+				instruction: 'OpenCurrentFolder'
 			});
 		},
 		request_position_change: function () {
@@ -278,9 +293,10 @@ let App = {
 
 					for (let i = 0; i < value.length; i++) {
 						const li = generateMenuItem(value[i]);
-						if (value[i] !== App.data.selected_folder.get()) {
-							menu_move_list.appendChild(li);
+						if (value[i] === App.data.selected_folder.get()) {
+							li.className = 'active';
 						}
+						menu_move_list.appendChild(li);
 					}
 				}
 			},
@@ -315,38 +331,66 @@ let App = {
 				for (let i = 0; i < App.data.target_folders.length; i++) {
 					const target = App.data.target_folders[i];
 
+					let row = document.createElement('div');
+					row.className = 'row';
+
+					const delete_button = document.createElement('button');
+					delete_button.innerText = '❌';
+					delete_button.title = 'Remove this target';
+					delete_button.className = 'delete button';
+					const id = i;
+					delete_button.addEventListener('click', function (e) {
+						App.data.target_folders.splice(id, 1);
+						App.remote.receive.set_targets(App.data.target_folders);
+					});
+					row.appendChild(delete_button);
+
 					const input = document.createElement('input');
 					input.setAttribute('type', 'text');
 					input.setAttribute('value', target);
 					input.setAttribute('disabled', true);
-					inputs.appendChild(input);
+					input.className = 'target_path';
+					row.appendChild(input);
 
-					const button = document.createElement('button');
-					button.innerHTML = '📂 Browse ...';
-					button.id = browse_prefix + i;
-					button.addEventListener('click', click_listener);
-					inputs.appendChild(button);
+					const browse_button = document.createElement('button');
+					browse_button.innerHTML = '📂 Browse ...';
+					browse_button.id = browse_prefix + i;
+					browse_button.addEventListener('click', click_listener);
+					browse_button.className = 'browse button';
+					row.appendChild(browse_button);
 
-					inputs.appendChild(document.createElement('br'));
+					inputs.appendChild(row);
 				}
+
+				let row = document.createElement('div');
+				row.className = 'row';
+
+				const delete_button = document.createElement('button');
+				delete_button.innerText = '❌';
+				delete_button.title = 'Remove this target';
+				delete_button.className = 'delete button';
+				delete_button.disabled = true;
+				row.appendChild(delete_button);
 
 				const input = document.createElement('input');
 				input.setAttribute('type', 'text');
 				input.setAttribute('value', '');
 				input.setAttribute('disabled', true);
-				inputs.appendChild(input);
+				input.className = 'target_path';
+				row.appendChild(input);
 
-				const button = document.createElement('button');
-				button.innerHTML = '📂 Browse ...';
-				button.addEventListener('click', function () {
+				const browse_button = document.createElement('button');
+				browse_button.innerHTML = '📂 Browse ...';
+				browse_button.addEventListener('click', function () {
 					App.remote.send({
 						instruction: 'ShowBrowseTarget',
 						id: targets.length
 					});
 				});
-				inputs.appendChild(button);
+				browse_button.className = 'browse button';
+				row.appendChild(browse_button);
 
-				inputs.appendChild(document.createElement('br'));
+				inputs.appendChild(row);
 			}
 		},
 		send: function (argument) {

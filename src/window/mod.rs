@@ -69,6 +69,12 @@ pub fn run(
 				}
 				instructions_code::Instruction::Random => {
 					instructions_code::random(webview, logger.clone());
+				},
+				instructions_code::Instruction::OpenCurrentFile => {
+					instructions_code::open_current_file(webview, logger.clone());
+				},
+				instructions_code::Instruction::OpenCurrentFolder => {
+					instructions_code::open_current_folder(webview, logger.clone());
 				}
 				instructions_code::Instruction::SetPosition { value } => {
 					instructions_code::set_position(webview, logger.clone(), value);
@@ -81,6 +87,7 @@ pub fn run(
 				}
 				instructions_code::Instruction::BrowseTargetFolders {
 					folders,
+					sort_order,
 					toggle_window,
 				} => {
 
@@ -111,7 +118,7 @@ pub fn run(
 						webview,
 						logger.clone(),
 						&file_regex,
-						instructions_for_window.sort.clone(),
+						sort_order,
 						folders,
 						toggle_window,
 					);
@@ -125,6 +132,7 @@ pub fn run(
 
 	let arc_for_dispatch = std::sync::Arc::clone(&user_data);
 	let logger_for_window = logger.clone();
+	let instructions_for_dispatch = instructions.clone();
 
 	main_window
 		.handle()
@@ -145,13 +153,13 @@ pub fn run(
 
 			// ****** FOLDERS ******
 
-			let mut folders: Vec<String> = vec![];
+			let mut move_folders: Vec<String> = vec![];
 			if let Ok(childs) = std::fs::read_dir(&instructions.working_folder) {
 				for entry in childs {
 					if let Ok(entry) = entry {
 						let path = entry.path();
 						if path.is_dir() {
-							folders.push(String::from(
+							move_folders.push(String::from(
 								path.file_name()
 									.unwrap_or_default()
 									.to_str()
@@ -162,13 +170,14 @@ pub fn run(
 				}
 			}
 
-			let mut folders_buffer = String::from("[");
-			folders_buffer += &folders
+			move_folders.sort();
+			let mut move_folders_buffer = String::from("[");
+			move_folders_buffer += &move_folders
 				.iter()
 				.map(|target| format!("{}", web_view::escape(&target)))
 				.collect::<Vec<String>>()
 				.join(",");
-			folders_buffer += "]";
+			move_folders_buffer += "]";
 
 			// ****** sending ******
 
@@ -181,11 +190,13 @@ App.data.internal_server_port = {};
 App.remote.receive.set_targets({});
 App.remote.receive.set_move_folders({});
 
-App.methods.do_open(false);",
+App.methods.browse_folders(false);
+document.getElementById('sort_targets_order').value = {};",
 				if instructions.debug { "true" } else { "false" },
 				internal_server_port,
 				&targets_buffer,
-				&folders_buffer
+				&move_folders_buffer,
+				web_view::escape(&instructions_for_dispatch.sort.clone())
 			);
 
 			run_js(main_window, &js_instructions, logger_for_window)
@@ -214,6 +225,7 @@ pub fn run_js(
 			&logger,
 			vec![
 				crate::LogLevel::DEBUG.into(),
+				charlie_buffalo::Flag::from("PRIVATE_DATA").into(),
 				charlie_buffalo::Attr::new("component", "webview").into(),
 				charlie_buffalo::Attr::new("event", "send_js").into(),
 			],

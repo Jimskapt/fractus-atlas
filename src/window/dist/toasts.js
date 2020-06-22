@@ -37,8 +37,12 @@ let ToastCenter = {
 
 				return id;
 			},
-			remove: function (id) {
-				if (ToastCenter.data.items._value[id] !== undefined) {
+			remove: function (id, force) {
+				if (force !== true && force !== false) {
+					force = false;
+				}
+
+				if (ToastCenter.data.items._value[id] !== undefined && (document.querySelector('#toast-' + id + ':hover') === null || force)) {
 					delete ToastCenter.data.items._value[id];
 					ToastCenter.methods.refresh_toasts();
 				}
@@ -70,7 +74,7 @@ let ToastCenter = {
 					container.innerHTML += toast.message;
 
 					container.addEventListener('click', function () {
-						ToastCenter.data.items.remove(id);
+						ToastCenter.data.items.remove(id, true);
 					});
 
 					document.body.appendChild(container);

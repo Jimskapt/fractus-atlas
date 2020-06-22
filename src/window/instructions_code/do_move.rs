@@ -74,6 +74,7 @@ pub fn do_move(
 									&logger,
 									vec![
 										crate::LogLevel::INFO.into(),
+										charlie_buffalo::Flag::from("PRIVATE_DATA").into(),
 										charlie_buffalo::Flag::from("RENAMING").into(),
 										charlie_buffalo::Attr::new("component", "webview").into(),
 										charlie_buffalo::Attr::new("event", "do_move").into(),
@@ -97,6 +98,7 @@ pub fn do_move(
 								&logger,
 								vec![
 									crate::LogLevel::DEBUG.into(),
+									charlie_buffalo::Flag::from("PRIVATE_DATA").into(),
 									charlie_buffalo::Attr::new("component", "webview").into(),
 									charlie_buffalo::Attr::new("event", "do_move").into(),
 								],
@@ -116,6 +118,7 @@ pub fn do_move(
 									&logger,
 									vec![
 										crate::LogLevel::INFO.into(),
+										charlie_buffalo::Flag::from("PRIVATE_DATA").into(),
 										charlie_buffalo::Attr::new("component", "webview").into(),
 										charlie_buffalo::Attr::new("event", "do_move").into(),
 									],
@@ -130,6 +133,7 @@ pub fn do_move(
 									&logger,
 									vec![
 										crate::LogLevel::DEBUG.into(),
+										charlie_buffalo::Flag::from("PRIVATE_DATA").into(),
 										charlie_buffalo::Attr::new("component", "webview").into(),
 										charlie_buffalo::Attr::new("event", "do_move").into(),
 									],
@@ -145,6 +149,7 @@ pub fn do_move(
 										&logger,
 										vec![
 											crate::LogLevel::INFO.into(),
+											charlie_buffalo::Flag::from("PRIVATE_DATA").into(),
 											charlie_buffalo::Attr::new("component", "webview")
 												.into(),
 											charlie_buffalo::Attr::new("event", "do_move").into(),
@@ -169,6 +174,7 @@ pub fn do_move(
 										&logger,
 										vec![
 											crate::LogLevel::DEBUG.into(),
+											charlie_buffalo::Flag::from("PRIVATE_DATA").into(),
 											charlie_buffalo::Attr::new("component", "webview")
 												.into(),
 											charlie_buffalo::Attr::new("event", "do_move").into(),
@@ -183,7 +189,7 @@ pub fn do_move(
 										toasts += "ToastCenter.data.items.push('";
 										toasts +=
 											"⏪ <strong>moved back</strong> to origin folder.";
-										toasts += "', 5000, {classes: 'toast success'});\n";
+										toasts += "', 3000, {classes: 'toast success'});\n";
 									} else {
 										toasts += "ToastCenter.data.items.push('";
 										toasts += &format!(
@@ -196,7 +202,7 @@ pub fn do_move(
 												.replace("'", "\\'"),
 											&into
 										);
-										toasts += "', 5000, {classes: 'toast success'});\n";
+										toasts += "', 3000, {classes: 'toast success'});\n";
 									}
 								}
 							}
@@ -207,6 +213,7 @@ pub fn do_move(
 								&logger,
 								vec![
 									crate::LogLevel::INFO.into(),
+									charlie_buffalo::Flag::from("PRIVATE_DATA").into(),
 									charlie_buffalo::Attr::new("component", "webview").into(),
 									charlie_buffalo::Attr::new("event", "do_move").into(),
 								],

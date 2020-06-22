@@ -1,6 +1,6 @@
 [package]
 name = "fractus-atlas"
-version = "1.9.0"
+version = "1.10.0"
 description = "An image viewer which allows you to quickly move them in folders."
 homepage = "https://github.com/Jimskapt/fractus-atlas"
 repository = "https://github.com/Jimskapt/fractus-atlas"
@@ -29,3 +29,4 @@ human-panic = "^1"
 charlie_buffalo = "^1"
 rmp-serde = "^0"
 chrono = "^0"
+opener = "^0"

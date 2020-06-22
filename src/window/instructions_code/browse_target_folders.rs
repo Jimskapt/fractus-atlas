@@ -38,6 +38,10 @@ pub fn browse_target_folders(
 														&logger,
 														vec![
 															crate::LogLevel::DEBUG.into(),
+															charlie_buffalo::Flag::from(
+																"PRIVATE_DATA",
+															)
+															.into(),
 															charlie_buffalo::Attr::new(
 																"component",
 																"webview",
@@ -60,6 +64,7 @@ pub fn browse_target_folders(
 													charlie_buffalo::push(&logger,
 														vec![
 															crate::LogLevel::DEBUG.into(),
+															charlie_buffalo::Flag::from("PRIVATE_DATA").into(),
 															charlie_buffalo::Attr::new("component", "webview").into(),
 															charlie_buffalo::Attr::new("event", "browse_target_folders").into(),
 														],
@@ -74,6 +79,8 @@ pub fn browse_target_folders(
 													&logger,
 													vec![
 														crate::LogLevel::DEBUG.into(),
+														charlie_buffalo::Flag::from("PRIVATE_DATA")
+															.into(),
 														charlie_buffalo::Attr::new(
 															"component",
 															"webview",
@@ -107,10 +114,7 @@ pub fn browse_target_folders(
 												)
 												.into(),
 											],
-											Some(&format!(
-												"can not get file name of {}",
-												i.current.display()
-											)),
+											Some("can not get file name"),
 										);
 
 										return false;
@@ -120,6 +124,7 @@ pub fn browse_target_folders(
 										&logger,
 										vec![
 											crate::LogLevel::DEBUG.into(),
+											charlie_buffalo::Flag::from("PRIVATE_DATA").into(),
 											charlie_buffalo::Attr::new("component", "webview")
 												.into(),
 											charlie_buffalo::Attr::new(
@@ -142,6 +147,7 @@ pub fn browse_target_folders(
 						&logger,
 						vec![
 							crate::LogLevel::ERROR.into(),
+							charlie_buffalo::Flag::from("PRIVATE_DATA").into(),
 							charlie_buffalo::Attr::new("component", "webview").into(),
 							charlie_buffalo::Attr::new("event", "browse_target_folders").into(),
 						],
