@@ -1,6 +1,5 @@
 /* TODO :
 - translations ?
-- fix manual target path field change
 - waiting window ?
 - support for multiple paths like `/home/user/{folder1,folder2}/src/`
 - fix case_insensitive for file filter regex

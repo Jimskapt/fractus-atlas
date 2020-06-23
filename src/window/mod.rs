@@ -85,6 +85,9 @@ pub fn run(
 				instructions_code::Instruction::ShowBrowseTarget { id } => {
 					instructions_code::show_browse_target(webview, logger.clone(), id);
 				}
+				instructions_code::Instruction::SetTargets { targets } => {
+					instructions_code::set_targets(webview, logger.clone(), targets);
+				}
 				instructions_code::Instruction::BrowseTargetFolders {
 					folders,
 					sort_order,
@@ -196,7 +199,7 @@ document.getElementById('sort_targets_order').value = {};",
 				internal_server_port,
 				&targets_buffer,
 				&move_folders_buffer,
-				web_view::escape(&instructions_for_dispatch.sort.clone())
+				web_view::escape(&instructions_for_dispatch.sort)
 			);
 
 			run_js(main_window, &js_instructions, logger_for_window)

@@ -5,6 +5,7 @@ mod open_current;
 mod previous;
 mod random;
 mod set_position;
+mod set_targets;
 mod show_browse_target;
 
 pub use browse_target_folders::browse_target_folders;
@@ -15,6 +16,7 @@ pub use open_current::open_current_folder;
 pub use previous::previous;
 pub use random::random;
 pub use set_position::set_position;
+pub use set_targets::set_targets;
 pub use show_browse_target::show_browse_target;
 
 #[derive(serde_derive::Deserialize, serde_derive::Serialize, Debug)]
@@ -33,7 +35,10 @@ pub enum Instruction {
 		toggle_popup: bool,
 	},
 	ShowBrowseTarget {
-		id: usize
+		id: usize,
+	},
+	SetTargets {
+		targets: Vec<String>,
 	},
 	BrowseTargetFolders {
 		folders: Vec<String>,

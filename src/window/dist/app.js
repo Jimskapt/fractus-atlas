@@ -341,14 +341,25 @@ let App = {
 					const id = i;
 					delete_button.addEventListener('click', function (e) {
 						App.data.target_folders.splice(id, 1);
-						App.remote.receive.set_targets(App.data.target_folders);
+
+						App.remote.send({
+							instruction: 'SetTargets',
+							targets: App.data.target_folders
+						});
 					});
 					row.appendChild(delete_button);
 
 					const input = document.createElement('input');
 					input.setAttribute('type', 'text');
 					input.setAttribute('value', target);
-					input.setAttribute('disabled', true);
+					input.addEventListener('change', function(e) {
+						App.data.target_folders.splice(id, 1, e.target.value);
+	
+						App.remote.send({
+							instruction: 'SetTargets',
+							targets: App.data.target_folders
+						});
+					});
 					input.className = 'target_path';
 					row.appendChild(input);
 
@@ -375,7 +386,14 @@ let App = {
 				const input = document.createElement('input');
 				input.setAttribute('type', 'text');
 				input.setAttribute('value', '');
-				input.setAttribute('disabled', true);
+				input.addEventListener('change', function(e) {
+					App.data.target_folders.push(e.target.value);
+
+					App.remote.send({
+						instruction: 'SetTargets',
+						targets: App.data.target_folders
+					});
+				});
 				input.className = 'target_path';
 				row.appendChild(input);
 
