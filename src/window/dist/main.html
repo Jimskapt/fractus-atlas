@@ -56,7 +56,14 @@
 
 	<ul id="custom_menu">
 		<li><label>🚚 move ▶</label>
-			<ul id="menu_move_list"></ul>
+			<ul>
+				<li><label>⏱ by history ▶</label>
+					<ul id="menu_move_list_history"></ul>
+				</li>
+				<li><label>🔤 by name ▶</label>
+					<ul id="menu_move_list_alpha"></ul>
+				</li>
+			</ul>
 		</li>
 		<li onclick="App.methods.open_current_file()">🔭 open this file</li>
 		<li onclick="App.methods.open_current_folder()">📁 open its folder</li>

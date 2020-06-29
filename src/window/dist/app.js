@@ -11,6 +11,7 @@ let App = {
 		active_already_moved: false,
 		images_count: 0,
 		move_folders: [],
+		move_folders_history: [],
 		target_folders: [],
 		internal_server_port: undefined,
 		internal_server_token: '',
@@ -25,6 +26,7 @@ let App = {
 			set: function (new_value, propagate_break) {
 				if (new_value !== undefined && new_value !== null) {
 					App.data.selected_folder._value = new_value;
+
 					if (propagate_break !== true) {
 						App.methods.refresh_move_folders_results();
 					}
@@ -201,6 +203,13 @@ let App = {
 				toggle_popup_after = true;
 			}
 
+			if (App.data.selected_folder.get() !== '' && App.data.selected_folder.get() !== '*move_back_to_origin*') {
+				App.data.move_folders_history = App.data.move_folders_history.filter(function (e) {
+					return e !== App.data.selected_folder.get();
+				});
+				App.data.move_folders_history.unshift(App.data.selected_folder.get());
+			}
+
 			App.remote.send({
 				instruction: 'DoMove',
 				into: App.data.selected_folder.get(),
@@ -269,10 +278,10 @@ let App = {
 				App.data.move_folders = value;
 				App.methods.refresh_move_folders_results(document.getElementById('move_search').value);
 
-				const menu_move_list = document.getElementById('menu_move_list');
-				if (menu_move_list !== undefined && menu_move_list !== null) {
-					while (menu_move_list.firstChild) {
-						menu_move_list.removeChild(menu_move_list.lastChild);
+				const menu_move_list_alpha = document.getElementById('menu_move_list_alpha');
+				if (menu_move_list_alpha !== undefined && menu_move_list_alpha !== null) {
+					while (menu_move_list_alpha.firstChild) {
+						menu_move_list_alpha.removeChild(menu_move_list_alpha.lastChild);
 					}
 
 					const generateMenuItem = function (folder) {
@@ -285,18 +294,44 @@ let App = {
 						return li;
 					};
 
-					if (App.data.selected_folder.get() !== '' && App.data.selected_folder.get() !== '*move_back_to_origin*') {
-						const li = generateMenuItem(App.data.selected_folder.get());
-						li.className = 'active';
-						menu_move_list.appendChild(li);
-					}
-
 					for (let i = 0; i < value.length; i++) {
 						const li = generateMenuItem(value[i]);
 						if (value[i] === App.data.selected_folder.get()) {
 							li.className = 'active';
 						}
-						menu_move_list.appendChild(li);
+						menu_move_list_alpha.appendChild(li);
+					}
+				}
+
+				const menu_move_list_history = document.getElementById('menu_move_list_history');
+				if (menu_move_list_history !== undefined && menu_move_list_history !== null) {
+					while (menu_move_list_history.firstChild) {
+						menu_move_list_history.removeChild(menu_move_list_history.lastChild);
+					}
+
+					const generateMenuItem = function (folder) {
+						const li = document.createElement('li');
+						li.textContent = folder;
+						li.addEventListener('click', function () {
+							App.data.selected_folder.set(folder);
+							App.methods.do_move(false);
+						});
+						return li;
+					};
+
+					for (let i = 0; i < App.data.move_folders_history.length; i++) {
+						const li = generateMenuItem(App.data.move_folders_history[i]);
+						if (App.data.move_folders_history[i] === App.data.selected_folder.get()) {
+							li.className = 'active';
+						}
+						menu_move_list_history.appendChild(li);
+					}
+
+					const label = menu_move_list_history.parentNode.querySelector('label');
+					if (App.data.move_folders_history.length <= 0 && label.innerText.includes('▶')) {
+						label.innerText = label.innerText.substring(0, label.innerText.length - 1);
+					} else if (App.data.move_folders_history.length > 0 && !label.innerText.includes('▶')) {
+						label.innerText += '▶';
 					}
 				}
 			},
@@ -352,9 +387,9 @@ let App = {
 					const input = document.createElement('input');
 					input.setAttribute('type', 'text');
 					input.setAttribute('value', target);
-					input.addEventListener('change', function(e) {
+					input.addEventListener('change', function (e) {
 						App.data.target_folders.splice(id, 1, e.target.value);
-	
+
 						App.remote.send({
 							instruction: 'SetTargets',
 							targets: App.data.target_folders
@@ -386,7 +421,7 @@ let App = {
 				const input = document.createElement('input');
 				input.setAttribute('type', 'text');
 				input.setAttribute('value', '');
-				input.addEventListener('change', function(e) {
+				input.addEventListener('change', function (e) {
 					App.data.target_folders.push(e.target.value);
 
 					App.remote.send({
