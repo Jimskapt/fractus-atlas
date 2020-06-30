@@ -16,7 +16,7 @@
 - can remove keyword with `-keyword` in move search
 - allow separators for multiple search for move
 - set default target paths on start inside config file ?
-- buttons in bar on bottom for quick move ?
+- about popup
 */
 
 #![allow(clippy::needless_return)]

@@ -39,6 +39,14 @@
 			<input type="text" readonly="readonly" id="imgpath" />
 		</header>
 
+		<span id="quick_move_bar">
+			<button class="button" onclick="App.methods.toggle_quick_move_bar();" title="toggle quick move bar"
+				id="toggle_quick_move_bar" class="will_hide">◀</button>
+			<span id="quick_move_bar_content">
+				<span id="quick_move_bar_buttons"></span>
+			</span>
+		</span>
+
 		<article>
 			<img src="" id="image" alt="image" style="display: none;" />
 			<!--[if lt IE 11]>

@@ -82,6 +82,46 @@ header #position_display input[type="text"] {
 	font-size: 0.9em;
 }
 
+/* ============= QUICK MOVE BAR ============= */
+
+#quick_move_bar {
+	text-align: center;
+	padding: 0 0.3em;
+	font-size: 0.8em;
+	position: absolute;
+	top: 7em;
+}
+
+#quick_move_bar .button {
+	padding: 0.2em;
+}
+
+#quick_move_bar_buttons .button {
+	margin: 0 0.3em;
+}
+
+#toggle_quick_move_bar {
+	font-weight: bold;
+}
+
+#toggle_quick_move_bar #quick_move_bar_content {
+	display: none;
+}
+
+#toggle_quick_move_bar {
+	box-shadow: none;
+}
+
+#toggle_quick_move_bar.will_show {
+	transform: rotate(180deg);
+	opacity: 0.3;
+}
+
+#toggle_quick_move_bar.will_hide {
+	transform: rotate(0deg);
+	opacity: 1.0;
+}
+
 /* ============= MAIN ============= */
 
 #page {
@@ -98,7 +138,7 @@ header #position_display input[type="text"] {
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
-	padding: 2em 0;
+	padding: 3em 0;
 }
 
 article {
@@ -109,8 +149,8 @@ article {
 button#main_previous,
 button#main_next {
 	position: absolute;
-	top: 15vh;
-	height: 70vh;
+	top: 20vh;
+	height: 60vh;
 	width: 25vw;
 	border: 0;
 	font-size: 5em;
@@ -387,7 +427,6 @@ article #no-images-error button {
 
 #custom_menu ul {
 	left: 100%;
-	/* top: 0; */
 	margin-top: -1.6em;
 }
 

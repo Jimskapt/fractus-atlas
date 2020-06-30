@@ -15,6 +15,7 @@ let App = {
 		target_folders: [],
 		internal_server_port: undefined,
 		internal_server_token: '',
+		hide_quick_move_bar: false,
 		selected_folder: {
 			_value: '',
 			init: function () {
@@ -266,6 +267,19 @@ let App = {
 			ToastCenter.data.items.push('⁉ The file <strong>' + App.data.active_image + '</strong> was not found', -1, {
 				classes: 'toast error'
 			});
+		},
+		toggle_quick_move_bar: function () {
+			App.data.hide_quick_move_bar = !App.data.hide_quick_move_bar;
+
+			const quick_move_bar_content = document.getElementById('quick_move_bar_content');
+			if (quick_move_bar_content.style.display === 'none') {
+				quick_move_bar_content.style.display = 'inline';
+				document.getElementById('toggle_quick_move_bar').className = 'button will_hide';
+			} else {
+				quick_move_bar_content.style.display = 'none';
+				document.getElementById('toggle_quick_move_bar').className = 'button will_show';
+			}
+			//App.remote.receive.set_move_folders(App.data.move_folders);
 		}
 	},
 	remote: {
@@ -333,6 +347,35 @@ let App = {
 					} else if (App.data.move_folders_history.length > 0 && !label.innerText.includes('▶')) {
 						label.innerText += '▶';
 					}
+				}
+
+				const quick_move_bar_buttons = document.getElementById('quick_move_bar_buttons');
+				if (quick_move_bar_buttons !== undefined && quick_move_bar_buttons !== null) {
+					while (quick_move_bar_buttons.firstChild) {
+						quick_move_bar_buttons.removeChild(quick_move_bar_buttons.lastChild);
+					}
+
+					const generateButton = function (folder) {
+						const button = document.createElement('button');
+						button.textContent = folder;
+						button.className = 'button'
+						button.addEventListener('click', function () {
+							App.data.selected_folder.set(folder);
+							App.methods.do_move(false);
+						});
+						return button;
+					};
+
+					for (let i = 0; i < App.data.move_folders_history.length; i++) {
+						const button = generateButton(App.data.move_folders_history[i]);
+						quick_move_bar_buttons.appendChild(button);
+					}
+				}
+
+				if (App.data.move_folders_history.length <= 0) {
+					document.getElementById('quick_move_bar').style.display = 'none';
+				} else {
+					document.getElementById('quick_move_bar').style.display = 'block';
 				}
 			},
 			set_active: function (position, path, token, is_active_already_moved) {

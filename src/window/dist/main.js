@@ -8,10 +8,12 @@ setTimeout(function () {
 		App.remote.debug = true;
 		App.remote.receive.set_targets(['./target-1/', './target-2/', './target-3/']);
 		App.methods.browse_folders(false);
-		App.remote.receive.set_move_folders(['folder-A', 'folder-B', 'folder-C', 'folder-D']);
+		App.data.move_folders_history = ['folder-B', 'folder-D'];
 		App.data.internal_server_port = 4040;
 		App.remote.receive.set_images_count(1);
 		App.remote.receive.set_active(1, 'a/b/c/d.jpg', 'token', false);
+
+		App.remote.receive.set_move_folders(['folder-A', 'folder-B', 'folder-C', 'folder-D']);
 
 		App.methods.refresh_image();
 	}
