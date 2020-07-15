@@ -16,6 +16,7 @@ let App = {
 		internal_server_port: undefined,
 		internal_server_token: '',
 		hide_quick_move_bar: false,
+		folders_colors: {},
 		selected_folder: {
 			_value: '',
 			init: function () {
@@ -209,6 +210,18 @@ let App = {
 					return e !== App.data.selected_folder.get();
 				});
 				App.data.move_folders_history.unshift(App.data.selected_folder.get());
+
+				const color = App.data.folders_colors[App.data.selected_folder.get()];
+				if (color === undefined || color === null) {
+					let new_color = "";
+
+					const alphadecimal = "0123456789ABCDEF";
+					for (let i = 1; i <= 6; i++) {
+						new_color += alphadecimal.charAt(Math.random() * alphadecimal.length);
+					}
+
+					App.data.folders_colors[App.data.selected_folder.get()] = new_color;
+				}
 			}
 
 			App.remote.send({
@@ -356,9 +369,24 @@ let App = {
 					}
 
 					const generateButton = function (folder) {
+						const color = App.data.folders_colors[folder];
+
 						const button = document.createElement('button');
-						button.textContent = folder;
-						button.className = 'button'
+
+						if(color !== undefined && color !== null) {
+							const colorLabel = document.createElement('span');
+							colorLabel.style.backgroundColor = "#" + color;
+							colorLabel.className = "dot";
+							button.appendChild(colorLabel);
+
+							button.style.borderColor = "#" + color;
+						}
+
+						const label = document.createElement('span');
+						label.textContent = folder;
+						button.appendChild(label);
+
+						button.className = 'button';
 						button.addEventListener('click', function () {
 							App.data.selected_folder.set(folder);
 							App.methods.do_move(false);

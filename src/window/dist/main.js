@@ -9,6 +9,22 @@ setTimeout(function () {
 		App.remote.receive.set_targets(['./target-1/', './target-2/', './target-3/']);
 		App.methods.browse_folders(false);
 		App.data.move_folders_history = ['folder-B', 'folder-D'];
+
+		App.data.folders_colors = [];
+		const alphadecimal = "0123456789ABCDEF";
+
+		let new_color = "";
+		for (let i = 1; i <= 6; i++) {
+			new_color += alphadecimal.charAt(Math.random() * alphadecimal.length);;
+		}
+		App.data.folders_colors[App.data.move_folders_history[0]] = new_color;
+
+		new_color = "";
+		for (let i = 1; i <= 6; i++) {
+			new_color += alphadecimal.charAt(Math.random() * alphadecimal.length);;
+		}
+		App.data.folders_colors[App.data.move_folders_history[1]] = new_color;
+
 		App.data.internal_server_port = 4040;
 		App.remote.receive.set_images_count(1);
 		App.remote.receive.set_active(1, 'a/b/c/d.jpg', 'token', false);

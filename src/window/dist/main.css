@@ -100,6 +100,15 @@ header #position_display input[type="text"] {
 	margin: 0 0.3em;
 }
 
+#quick_move_bar_buttons .button .dot {
+	display: inline-block;
+	width: 0.8em;
+	height: 0.8em;
+	margin-right: 0.3em;
+	margin-left: 0.1em;
+	border-radius: 0.4em;
+}
+
 #toggle_quick_move_bar {
 	font-weight: bold;
 }

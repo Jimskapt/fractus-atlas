@@ -7,7 +7,6 @@
 - create a buffer file in each target root ? (faster next loading, followed by async update)
 - listen file changes in targets
 - finishing implementing arguments options in cli_parsing
-- serve custom css from working_folder/custom.css ?
 - or light/dark theme ? or both ?
 - display move folders as big button with folder icon ? maybe custom icon ?
 - send and use token with front-end ?
