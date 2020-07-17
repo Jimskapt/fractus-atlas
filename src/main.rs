@@ -4,8 +4,8 @@
 - support for multiple paths like `/home/user/{folder1,folder2}/src/`
 - fix case_insensitive for file filter regex
 - set call limits on backend ?
-- create a buffer file in each target root ? (faster next loading, followed by async update)
-- listen file changes in targets
+- create a buffer file in each browsing folder ? (faster next loading, followed by async update)
+- listen file changes in browsing folders
 - finishing implementing arguments options in cli_parsing
 - or light/dark theme ? or both ?
 - display move folders as big button with folder icon ? maybe custom icon ?
@@ -14,7 +14,6 @@
 - sort move list by child files count ?
 - can remove keyword with `-keyword` in move search
 - allow separators for multiple search for move
-- set default target paths on start inside config file ?
 - about popup
 */
 
@@ -49,7 +48,7 @@ fn main() {
 
 	let mut user_data = user_data::UserData::default();
 	user_data.internal_server_port = rng.gen_range(1024, 65535);
-	user_data.targets = instructions.targets.clone();
+	user_data.browsing_folders = instructions.browsing_folders.clone();
 	user_data.debug = instructions.debug;
 
 	let arc_user_data: Arc<Mutex<user_data::UserData>> = Arc::new(Mutex::new(user_data));

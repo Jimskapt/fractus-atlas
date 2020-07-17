@@ -12,7 +12,7 @@ let App = {
 		images_count: 0,
 		move_folders: [],
 		move_folders_history: [],
-		target_folders: [],
+		browsing_folders: [],
 		internal_server_port: undefined,
 		internal_server_token: '',
 		hide_quick_move_bar: false,
@@ -139,8 +139,8 @@ let App = {
 				});
 
 				for (let i = 0; i < filtered_folders.length; i++) {
-					const target_folder = filtered_folders[i];
-					appendLabel(target_folder, target_folder);
+					const browsing_folders_folder = filtered_folders[i];
+					appendLabel(browsing_folders_folder, browsing_folders_folder);
 				}
 
 				if (!exact_match && search_value !== '') {
@@ -236,9 +236,9 @@ let App = {
 			}
 
 			App.remote.send({
-				instruction: 'BrowseTargetFolders',
-				folders: App.data.target_folders,
-				sort_order: document.getElementById('sort_targets_order').value,
+				instruction: 'BrowseBrowsingFolders',
+				browsing_folders: App.data.browsing_folders,
+				sort_order: document.getElementById('sort_browsing_folders_order').value,
 				toggle_window: toggle_window,
 			});
 		},
@@ -277,7 +277,7 @@ let App = {
 			image.style.marginTop = '5em';
 			image.src = BASE64_ERROR_IMAGE;
 
-			ToastCenter.data.items.push('⁉ The file <strong>' + App.data.active_image + '</strong> was not found', -1, {
+			ToastCenter.data.items.push('⁉ The image <strong>"' + App.data.active_image + '"</strong> was not found', -1, {
 				classes: 'toast error'
 			});
 		},
@@ -373,7 +373,7 @@ let App = {
 
 						const button = document.createElement('button');
 
-						if(color !== undefined && color !== null) {
+						if (color !== undefined && color !== null) {
 							const colorLabel = document.createElement('span');
 							colorLabel.style.backgroundColor = "#" + color;
 							colorLabel.className = "dot";
@@ -391,6 +391,7 @@ let App = {
 							App.data.selected_folder.set(folder);
 							App.methods.do_move(false);
 						});
+
 						return button;
 					};
 
@@ -416,11 +417,11 @@ let App = {
 			preload: function (token) {
 				(new Image()).src = 'http://127.0.0.1:' + App.data.internal_server_port + '/' + token;
 			},
-			set_targets: function (targets) {
+			set_browsing_folders: function (browsing_folders) {
 
-				App.data.target_folders = targets;
+				App.data.browsing_folders = browsing_folders;
 
-				const inputs = document.getElementById('target_folders_inputs');
+				const inputs = document.getElementById('browsing_folders_inputs');
 
 				while (inputs.firstChild) {
 					inputs.removeChild(inputs.lastChild);
@@ -429,44 +430,44 @@ let App = {
 				const browse_prefix = 'browse-';
 				const click_listener = function (event) {
 					App.remote.send({
-						instruction: 'ShowBrowseTarget',
+						instruction: 'ShowBrowseFolderWindow',
 						id: Number(event.target.id.substring(browse_prefix.length))
 					});
 				};
 
-				for (let i = 0; i < App.data.target_folders.length; i++) {
-					const target = App.data.target_folders[i];
+				for (let i = 0; i < App.data.browsing_folders.length; i++) {
+					const browsing_folder = App.data.browsing_folders[i];
 
 					let row = document.createElement('div');
 					row.className = 'row';
 
 					const delete_button = document.createElement('button');
 					delete_button.innerText = '❌';
-					delete_button.title = 'Remove this target';
+					delete_button.title = 'Remove this folder';
 					delete_button.className = 'delete button';
 					const id = i;
 					delete_button.addEventListener('click', function (e) {
-						App.data.target_folders.splice(id, 1);
+						App.data.browsing_folders.splice(id, 1);
 
 						App.remote.send({
-							instruction: 'SetTargets',
-							targets: App.data.target_folders
+							instruction: 'SetBrowsingFolders',
+							browsing_folders: App.data.browsing_folders
 						});
 					});
 					row.appendChild(delete_button);
 
 					const input = document.createElement('input');
 					input.setAttribute('type', 'text');
-					input.setAttribute('value', target);
+					input.setAttribute('value', browsing_folder);
 					input.addEventListener('change', function (e) {
-						App.data.target_folders.splice(id, 1, e.target.value);
+						App.data.browsing_folders.splice(id, 1, e.target.value);
 
 						App.remote.send({
-							instruction: 'SetTargets',
-							targets: App.data.target_folders
+							instruction: 'SetBrowsingFolders',
+							browsing_folders: App.data.browsing_folders
 						});
 					});
-					input.className = 'target_path';
+					input.className = 'folder_path';
 					row.appendChild(input);
 
 					const browse_button = document.createElement('button');
@@ -484,7 +485,7 @@ let App = {
 
 				const delete_button = document.createElement('button');
 				delete_button.innerText = '❌';
-				delete_button.title = 'Remove this target';
+				delete_button.title = 'Remove this folder';
 				delete_button.className = 'delete button';
 				delete_button.disabled = true;
 				row.appendChild(delete_button);
@@ -493,22 +494,22 @@ let App = {
 				input.setAttribute('type', 'text');
 				input.setAttribute('value', '');
 				input.addEventListener('change', function (e) {
-					App.data.target_folders.push(e.target.value);
+					App.data.browsing_folders.push(e.target.value);
 
 					App.remote.send({
-						instruction: 'SetTargets',
-						targets: App.data.target_folders
+						instruction: 'SetBrowsingFolders',
+						browsing_folders: App.data.browsing_folders
 					});
 				});
-				input.className = 'target_path';
+				input.className = 'folder_path';
 				row.appendChild(input);
 
 				const browse_button = document.createElement('button');
 				browse_button.innerHTML = '📂 Browse ...';
 				browse_button.addEventListener('click', function () {
 					App.remote.send({
-						instruction: 'ShowBrowseTarget',
-						id: targets.length
+						instruction: 'ShowBrowseFolderWindow',
+						id: browsing_folders.length
 					});
 				});
 				browse_button.className = 'browse button';

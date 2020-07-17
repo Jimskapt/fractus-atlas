@@ -3,7 +3,7 @@ type TemporaryLog = (Vec<(String, String)>, String);
 #[derive(Clone)]
 pub struct CliInstructions {
 	pub debug: bool,
-	pub targets: Vec<String>,
+	pub browsing_folders: Option<Vec<String>>,
 	pub sort: String,
 	pub filter: String,
 	pub working_folder: String,
@@ -30,7 +30,7 @@ impl Default for CliInstructions {
 
 		CliInstructions {
 			debug: false,
-			targets: vec![String::from(".")],
+			browsing_folders: None,
 			sort: String::from("modified"),
 			filter: String::from("\\.((png)|(tiff)|(tif)|(bmp)|(jpg)|(jpeg)|(gif)|(jfif))$"),
 			working_folder,
@@ -42,8 +42,6 @@ impl CliInstructions {
 	pub fn new() -> (Self, Vec<TemporaryLog>) {
 		let mut result = CliInstructions::default();
 		let mut logs = vec![];
-
-		let default_targets = result.targets.join(",");
 
 		let working_folder = result.working_folder;
 		let filter = result.filter;
@@ -95,9 +93,8 @@ impl CliInstructions {
 			)
 			.arg(
 				clap::Arg::with_name("TARGETS")
-					.help(r#"The folders where search for files, separated by a coma ","."#)
-					.required(false)
-					.default_value(&default_targets),
+					.help(r#"The browsing folders where search for files, separated by a coma ","."#)
+					.required(false),
 			)
 			.arg(
 				clap::Arg::with_name("config_file_path")
@@ -145,12 +142,16 @@ impl CliInstructions {
 
 		result.debug = matches.is_present("debug");
 
-		result.targets = matches
-			.value_of("TARGETS")
-			.unwrap_or_default()
-			.split(',')
-			.map(|i| String::from(i.trim()))
-			.collect();
+		if let Some(browsing_folders) = matches.value_of("TARGETS") {
+			result.browsing_folders = Some(
+				browsing_folders
+					.split(',')
+					.map(|i| String::from(i.trim()))
+					.collect(),
+			);
+		} else {
+			result.browsing_folders = None;
+		}
 
 		result.filter = String::from(matches.value_of("filter").unwrap_or(&filter));
 		result.working_folder = String::from(
@@ -217,7 +218,7 @@ impl CliInstructions {
 				charlie_buffalo::Attr::new("component", "app").into(),
 				charlie_buffalo::Attr::new("stage", "configuration").into(),
 			],
-			format!("root targets are {:?}", result.targets),
+			format!("browsing folders are {:?}", result.browsing_folders),
 		));
 		logs.push((
 			vec![

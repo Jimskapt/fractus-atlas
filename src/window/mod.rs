@@ -30,7 +30,7 @@ pub fn run(
 			&format!(
 				"<style type=\"text/css\">{}\n{}</style>",
 				include_str!("dist/main.css"),
-				configuration.custom_css
+				configuration.clone().custom_css.unwrap_or_default()
 			),
 		);
 
@@ -82,14 +82,14 @@ pub fn run(
 				instructions_code::Instruction::DoMove { into, toggle_popup } => {
 					instructions_code::do_move(webview, logger.clone(), instructions_for_window.working_folder.clone(), into, toggle_popup);
 				}
-				instructions_code::Instruction::ShowBrowseTarget { id } => {
-					instructions_code::show_browse_target(webview, logger.clone(), id);
+				instructions_code::Instruction::ShowBrowseFolderWindow { id } => {
+					instructions_code::show_browse_folder_window(webview, logger.clone(), id);
 				}
-				instructions_code::Instruction::SetTargets { targets } => {
-					instructions_code::set_targets(webview, logger.clone(), targets);
+				instructions_code::Instruction::SetBrowsingFolders { browsing_folders } => {
+					instructions_code::set_browsing_folders(webview, logger.clone(), browsing_folders);
 				}
-				instructions_code::Instruction::BrowseTargetFolders {
-					folders,
+				instructions_code::Instruction::BrowseBrowsingFolders {
+					browsing_folders,
 					sort_order,
 					toggle_window,
 				} => {
@@ -117,12 +117,12 @@ pub fn run(
 						}
 					};
 
-					instructions_code::browse_target_folders(
+					instructions_code::browse_browsing_folders(
 						webview,
 						logger.clone(),
 						&file_regex,
 						sort_order,
-						folders,
+						browsing_folders,
 						toggle_window,
 					);
 				}
@@ -140,19 +140,30 @@ pub fn run(
 	main_window
 		.handle()
 		.dispatch(move |main_window| {
-			let mut targets = arc_for_dispatch.lock().unwrap().targets.clone();
+			let mut browsing_folders = arc_for_dispatch
+				.lock()
+				.unwrap()
+				.browsing_folders
+				.clone()
+				.unwrap_or_else(|| {
+					configuration.default_browsing_folders.unwrap_or_else(|| {
+						crate::configuration::Configuration::default_placeholders()
+							.default_browsing_folders
+							.unwrap()
+					})
+				});
 			let internal_server_port = arc_for_dispatch.lock().unwrap().internal_server_port;
 
-			// ****** TARGETS ******
+			// ****** BROWSING FOLDERS ******
 
-			targets.sort();
-			let mut targets_buffer = String::from("[");
-			targets_buffer += &targets
+			browsing_folders.sort();
+			let mut browsing_folders_buffer = String::from("[");
+			browsing_folders_buffer += &browsing_folders
 				.iter()
-				.map(|target| format!("{}", web_view::escape(&target)))
+				.map(|browsing_folders| format!("{}", web_view::escape(&browsing_folders)))
 				.collect::<Vec<String>>()
 				.join(",");
-			targets_buffer += "]";
+			browsing_folders_buffer += "]";
 
 			// ****** FOLDERS ******
 
@@ -177,7 +188,7 @@ pub fn run(
 			let mut move_folders_buffer = String::from("[");
 			move_folders_buffer += &move_folders
 				.iter()
-				.map(|target| format!("{}", web_view::escape(&target)))
+				.map(|browsing_folders| format!("{}", web_view::escape(&browsing_folders)))
 				.collect::<Vec<String>>()
 				.join(",");
 			move_folders_buffer += "]";
@@ -190,14 +201,14 @@ pub fn run(
 App.data.debug = {};
 App.data.internal_server_port = {};
 
-App.remote.receive.set_targets({});
+App.remote.receive.set_browsing_folders({});
 App.remote.receive.set_move_folders({});
 
 App.methods.browse_folders(false);
-document.getElementById('sort_targets_order').value = {};",
+document.getElementById('sort_browsing_folders_order').value = {};",
 				if instructions.debug { "true" } else { "false" },
 				internal_server_port,
-				&targets_buffer,
+				&browsing_folders_buffer,
 				&move_folders_buffer,
 				web_view::escape(&instructions_for_dispatch.sort)
 			);

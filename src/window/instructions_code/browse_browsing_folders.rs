@@ -1,4 +1,4 @@
-pub fn browse_target_folders(
+pub fn browse_browsing_folders(
 	webview: &mut web_view::WebView<std::sync::Arc<std::sync::Mutex<crate::user_data::UserData>>>,
 	logger: charlie_buffalo::ConcurrentLogger,
 	file_regex: &regex::Regex,
@@ -12,9 +12,9 @@ pub fn browse_target_folders(
 			vec![
 				crate::LogLevel::DEBUG.into(),
 				charlie_buffalo::Attr::new("component", "webview").into(),
-				charlie_buffalo::Attr::new("event", "browse_target_folders").into(),
+				charlie_buffalo::Attr::new("event", "browse_browsing_folders").into(),
 			],
-			Some("starting searching in targets"),
+			Some("starting searching in browsing folders"),
 		);
 
 		let mut images: Vec<crate::user_data::Image> = vec![];
@@ -49,7 +49,7 @@ pub fn browse_target_folders(
 															.into(),
 															charlie_buffalo::Attr::new(
 																"event",
-																"browse_target_folders",
+																"browse_browsing_folders",
 															)
 															.into(),
 														],
@@ -66,7 +66,7 @@ pub fn browse_target_folders(
 															crate::LogLevel::DEBUG.into(),
 															charlie_buffalo::Flag::from("PRIVATE_DATA").into(),
 															charlie_buffalo::Attr::new("component", "webview").into(),
-															charlie_buffalo::Attr::new("event", "browse_target_folders").into(),
+															charlie_buffalo::Attr::new("event", "browse_browsing_folders").into(),
 														],
 														Some(&format!("file {} does not match file filter regex", &file_name)),
 													);
@@ -88,7 +88,7 @@ pub fn browse_target_folders(
 														.into(),
 														charlie_buffalo::Attr::new(
 															"event",
-															"browse_target_folders",
+															"browse_browsing_folders",
 														)
 														.into(),
 													],
@@ -110,7 +110,7 @@ pub fn browse_target_folders(
 													.into(),
 												charlie_buffalo::Attr::new(
 													"event",
-													"browse_target_folders",
+													"browse_browsing_folders",
 												)
 												.into(),
 											],
@@ -129,7 +129,7 @@ pub fn browse_target_folders(
 												.into(),
 											charlie_buffalo::Attr::new(
 												"event",
-												"browse_target_folders",
+												"browse_browsing_folders",
 											)
 											.into(),
 										],
@@ -149,7 +149,7 @@ pub fn browse_target_folders(
 							crate::LogLevel::ERROR.into(),
 							charlie_buffalo::Flag::from("PRIVATE_DATA").into(),
 							charlie_buffalo::Attr::new("component", "webview").into(),
-							charlie_buffalo::Attr::new("event", "browse_target_folders").into(),
+							charlie_buffalo::Attr::new("event", "browse_browsing_folders").into(),
 						],
 						Some(&format!("can not read folder {} : {}", &root, e)),
 					);
@@ -162,9 +162,9 @@ pub fn browse_target_folders(
 			vec![
 				crate::LogLevel::DEBUG.into(),
 				charlie_buffalo::Attr::new("component", "webview").into(),
-				charlie_buffalo::Attr::new("event", "browse_target_folders").into(),
+				charlie_buffalo::Attr::new("event", "browse_browsing_folders").into(),
 			],
-			Some("end of searching in root targets"),
+			Some("end of searching in browsing folders"),
 		);
 
 		charlie_buffalo::push(
@@ -172,7 +172,7 @@ pub fn browse_target_folders(
 			vec![
 				crate::LogLevel::DEBUG.into(),
 				charlie_buffalo::Attr::new("component", "webview").into(),
-				charlie_buffalo::Attr::new("event", "browse_target_folders").into(),
+				charlie_buffalo::Attr::new("event", "browse_browsing_folders").into(),
 			],
 			Some(&format!("sorting found files by order : {}", &sort_order)),
 		);
@@ -201,7 +201,7 @@ pub fn browse_target_folders(
 			vec![
 				crate::LogLevel::DEBUG.into(),
 				charlie_buffalo::Attr::new("component", "webview").into(),
-				charlie_buffalo::Attr::new("event", "browse_target_folders").into(),
+				charlie_buffalo::Attr::new("event", "browse_browsing_folders").into(),
 			],
 			Some("end of sorting found files"),
 		);

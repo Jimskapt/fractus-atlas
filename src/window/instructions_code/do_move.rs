@@ -261,7 +261,7 @@ pub fn do_move(
 		let mut folders_buffer = String::from("[");
 		folders_buffer += &folders
 			.iter()
-			.map(|target| format!("{}", web_view::escape(&target)))
+			.map(|folder| format!("{}", web_view::escape(&folder)))
 			.collect::<Vec<String>>()
 			.join(",");
 		folders_buffer += "]";

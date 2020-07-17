@@ -19,7 +19,7 @@
 				</span>
 				<span class="separator">&nbsp;</span>
 				<button class="item button" onclick="App.methods.toggle_open_window()"
-					title="open other(s) folder(s)">🔎</button>
+					title="open other(s) browsing folder(s)">🔎</button>
 				<span class="separator">&nbsp;</span>
 				<button class="item button" onclick="App.remote.send('Previous')" id="secondary_previous"
 					title="go to previous image">⬅</button>
@@ -53,8 +53,9 @@
 			<p style="" id="please_upgrade_ie">⚠ please upgrade Microsoft Internet Explorer to use this software</p>
 			<![endif]-->
 			<p id="no-images-error">
-				❌ There is no images in this targets.<br>
-				<button onclick="App.methods.toggle_open_window()" class="button">🔎 Open other(s) folder(s)</button>
+				❌ There is no images in this browsing folder.<br>
+				<button onclick="App.methods.toggle_open_window()" class="button">🔎 Open other(s) browsing
+					folder(s)</button>
 			</p>
 		</article>
 	</div>
@@ -94,8 +95,8 @@
 
 	<div id="open_window" class="popup_window" style="display: none;">
 		<h1>Select source folders</h1>
-		<div id="target_folders_inputs"></div>
-		<label class="row">Sort matching files by : <select id="sort_targets_order">
+		<div id="browsing_folders_inputs"></div>
+		<label class="row">Sort matching files by : <select id="sort_browsing_folders_order">
 				<option value="name">name</option>
 				<option value="modified">modification date</option>
 			</select></label>

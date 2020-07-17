@@ -312,15 +312,15 @@ article #no-images-error button {
 
 /* ============= OPEN WINDOW ============= */
 
-#open_window #target_folders_inputs {
+#open_window #browsing_folders_inputs {
 	text-align: center;
 }
 
-#open_window #target_folders_inputs .target_path {
+#open_window #browsing_folders_inputs .folder_path {
 	min-width: 60%;
 }
 
-#open_window #target_folders_inputs .row button:not(:disabled) {
+#open_window #browsing_folders_inputs .row button:not(:disabled) {
 	cursor: pointer;
 }
 

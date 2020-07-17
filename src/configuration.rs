@@ -1,14 +1,17 @@
-#[derive(Debug, serde_derive::Deserialize, serde_derive::Serialize)]
+#[derive(Debug, serde_derive::Deserialize, serde_derive::Serialize, Default, Clone)]
 pub struct Configuration {
-	pub custom_css: String,
+	pub custom_css: Option<String>,
+	pub default_browsing_folders: Option<Vec<String>>,
 }
-impl Default for Configuration {
-	fn default() -> Configuration {
+impl Configuration {
+	pub fn default_placeholders() -> Configuration {
 		Configuration {
-			custom_css: String::new(),
+			custom_css: Some(String::from("")),
+			default_browsing_folders: Some(vec![String::from(".")]),
 		}
 	}
 }
+
 impl
 	std::convert::From<(
 		&crate::cli_parsing::CliInstructions,
@@ -84,7 +87,7 @@ impl
 					charlie_buffalo::Attr::new("stage", "configuration").into(),
 				],
 				Some(&format!(
-					"configuration file does not exists at {}, creating it with default value",
+					"configuration file does not exists at {}, creating it with default values",
 					&instructions.configuration_path
 				)),
 			);
@@ -92,7 +95,7 @@ impl
 			if let Some(folder) = &configuration_path.parent() {
 				match std::fs::create_dir_all(folder) {
 					Ok(_) => {
-						if let Ok(bytes) = toml::to_vec(&result) {
+						if let Ok(bytes) = toml::to_vec(&Configuration::default_placeholders()) {
 							match std::fs::write(&instructions.configuration_path, bytes) {
 								Ok(_) => {}
 								Err(e) => {

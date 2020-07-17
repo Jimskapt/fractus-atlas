@@ -6,7 +6,7 @@ let STANDALONE_MODE = true; // used when testing HTML in external browser
 setTimeout(function () {
 	if (STANDALONE_MODE) {
 		App.remote.debug = true;
-		App.remote.receive.set_targets(['./target-1/', './target-2/', './target-3/']);
+		App.remote.receive.set_browsing_folders(['./target-1/', './target-2/', './target-3/']);
 		App.methods.browse_folders(false);
 		App.data.move_folders_history = ['folder-B', 'folder-D'];
 

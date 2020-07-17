@@ -6,7 +6,7 @@ pub struct UserData {
 	pub internal_server_port: usize,
 	pub position: Option<usize>,
 	pub images: Vec<Image>,
-	pub targets: Vec<String>,
+	pub browsing_folders: Option<Vec<String>>,
 	pub debug: bool,
 }
 impl UserData {
