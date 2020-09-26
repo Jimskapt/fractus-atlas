@@ -1084,9 +1084,9 @@ checksum = "efd1f82c56340fdf16f2a953d7bda4f8fdffba13d93b00844c25572110b26079"
 
 [[package]]
 name = "trash"
-version = "1.0.1"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3d3efa66f2eb71069c3ba9582361e823626067b728ec882490e68c9c43b5e32"
+checksum = "329be7bb48445d16bf4c241ba9514af46f2189c715bf5fd854e38f7c95f60194"
 dependencies = [
  "winapi",
 ]
