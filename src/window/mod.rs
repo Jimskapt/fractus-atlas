@@ -86,7 +86,13 @@ pub fn run(
 					instructions_code::show_browse_folder_window(webview, logger.clone(), id);
 				}
 				instructions_code::Instruction::SetBrowsingFolders { browsing_folders } => {
-					instructions_code::set_browsing_folders(webview, logger.clone(), browsing_folders);
+					instructions_code::set_browsing_folders(
+						webview,
+						logger.clone(),
+						browsing_folders.iter().flat_map(|folder| {
+							multipath::parse(folder)
+						}).collect()
+					);
 				}
 				instructions_code::Instruction::BrowseBrowsingFolders {
 					browsing_folders,
@@ -146,11 +152,16 @@ pub fn run(
 				.browsing_folders
 				.clone()
 				.unwrap_or_else(|| {
-					configuration.default_browsing_folders.unwrap_or_else(|| {
-						crate::configuration::Configuration::default_placeholders()
-							.default_browsing_folders
-							.unwrap()
-					})
+					configuration
+						.default_browsing_folders
+						.unwrap_or_else(|| {
+							crate::configuration::Configuration::default_placeholders()
+								.default_browsing_folders
+								.unwrap()
+						})
+						.iter()
+						.flat_map(|folder| multipath::parse(folder))
+						.collect()
 				});
 			let internal_server_port = arc_for_dispatch.lock().unwrap().internal_server_port;
 

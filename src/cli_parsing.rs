@@ -143,12 +143,7 @@ impl CliInstructions {
 		result.debug = matches.is_present("debug");
 
 		if let Some(browsing_folders) = matches.value_of("TARGETS") {
-			result.browsing_folders = Some(
-				browsing_folders
-					.split(',')
-					.map(|i| String::from(i.trim()))
-					.collect(),
-			);
+			result.browsing_folders = Some(multipath::parse(&browsing_folders));
 		} else {
 			result.browsing_folders = None;
 		}

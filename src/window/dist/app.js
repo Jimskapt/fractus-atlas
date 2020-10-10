@@ -374,19 +374,21 @@ let App = {
 						const button = document.createElement('button');
 
 						if (color !== undefined && color !== null) {
-							const colorLabel = document.createElement('span');
-							colorLabel.style.backgroundColor = "#" + color;
-							colorLabel.className = "dot";
-							button.appendChild(colorLabel);
-
 							button.style.borderColor = "#" + color;
+							button.style.color = "#" + color;
 						}
 
 						const label = document.createElement('span');
-						label.textContent = folder;
+							const index = App.data.move_folders_history.indexOf(folder);
+							if (index >= 0 && index < 9) {
+								let char = String.fromCharCode('\u2460'.charCodeAt(0) + index);
+								label.textContent = char + ' ';
+							}
+						label.textContent += folder;
 						button.appendChild(label);
 
 						button.className = 'button';
+						button.title = 'Quick move current image into folder "' + folder + '".';
 						button.addEventListener('click', function () {
 							App.data.selected_folder.set(folder);
 							App.methods.do_move(false);

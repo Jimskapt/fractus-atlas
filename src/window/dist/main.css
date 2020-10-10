@@ -96,6 +96,11 @@ header #position_display input[type="text"] {
 	padding: 0.2em;
 }
 
+#quick_move_bar .button:hover {
+	color: white !important;
+	border-color: white !important;
+}
+
 #quick_move_bar_buttons .button {
 	margin: 0 0.3em;
 }

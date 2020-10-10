@@ -57,6 +57,20 @@ document.addEventListener("keyup", function (event) {
 			App.remote.send('Random');
 		} else if (event.key.toLowerCase() === "m") {
 			App.methods.toggle_move_window();
+		} else if (event.keyCode >= 97 && event.keyCode <= 105 && document.activeElement !== document.getElementById('position_input')) { // 1 to 9 keys from number pad
+			const target = event.keyCode - 97;
+			const folder = App.data.move_folders_history[target];
+			if (folder !== undefined && folder !== null) {
+				App.data.selected_folder.set(folder);
+				App.methods.do_move(false);
+			}
+		} else if (event.keyCode >= 49 && event.keyCode <= 57 && document.activeElement !== document.getElementById('position_input')) { // 1 to 9 keys from header bar
+			const target = event.keyCode - 49;
+			const folder = App.data.move_folders_history[target];
+			if (folder !== undefined && folder !== null) {
+				App.data.selected_folder.set(folder);
+				App.methods.do_move(false);
+			}
 		}
 	}
 });
