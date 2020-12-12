@@ -14,7 +14,7 @@ edition = "2018"
 [dependencies]
 clap = "^2"
 regex = "^1"
-web-view = "^0.6"
+web-view = "^0.7"
 rand = "^0"
 dunce = "^1"
 serde = "^1"
