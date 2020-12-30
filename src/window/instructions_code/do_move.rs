@@ -53,7 +53,7 @@ pub fn do_move(
 								new_name += "-fa_";
 
 								let mut rng_limit = rand::thread_rng();
-								for _ in 1..rng_limit.gen_range(6, 12) {
+								for _ in 1..rng_limit.gen_range(6..12) {
 									let mut rng_item = rand::thread_rng();
 									new_name.push(
 										crate::ALPHABET.chars().choose(&mut rng_item).unwrap(),
@@ -144,7 +144,7 @@ pub fn do_move(
 									)),
 								);
 
-								if trash::remove(&image.current).is_err() {
+								if trash::delete(&image.current).is_err() {
 									charlie_buffalo::push(
 										&logger,
 										vec![

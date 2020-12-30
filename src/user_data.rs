@@ -81,7 +81,7 @@ impl UserData {
 	pub fn go_to_random(&mut self) {
 		if !self.images.is_empty() {
 			let mut rng = rand::thread_rng();
-			self.position = Some(rng.gen_range(0, self.images.len() - 1));
+			self.position = Some(rng.gen_range(0..self.images.len()));
 		} else {
 			self.position = None;
 		}
@@ -146,7 +146,7 @@ impl std::convert::From<std::path::PathBuf> for Image {
 	fn from(from: std::path::PathBuf) -> Self {
 		let mut token = String::new();
 		let mut rng_limit = rand::thread_rng();
-		for _ in 1..rng_limit.gen_range(32, 64) {
+		for _ in 1..rng_limit.gen_range(32..64) {
 			let mut rng_item = rand::thread_rng();
 			token.push(crate::ALPHABET.chars().choose(&mut rng_item).unwrap());
 		}

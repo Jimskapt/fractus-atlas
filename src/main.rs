@@ -47,7 +47,7 @@ fn main() {
 	let mut rng = rand::thread_rng();
 
 	let mut user_data = user_data::UserData::default();
-	user_data.internal_server_port = rng.gen_range(1024, 65535);
+	user_data.internal_server_port = rng.gen_range(1024..65535);
 	user_data.browsing_folders = instructions.browsing_folders.clone();
 	user_data.debug = instructions.debug;
 

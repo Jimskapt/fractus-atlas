@@ -1,6 +1,6 @@
 [package]
 name = "fractus-atlas"
-version = "1.14.0"
+version = "1.14.1"
 description = "An image viewer which allows you to quickly move them in folders."
 homepage = "https://github.com/Jimskapt/fractus-atlas"
 repository = "https://github.com/Jimskapt/fractus-atlas"
@@ -14,7 +14,7 @@ edition = "2018"
 [dependencies]
 clap = "^2"
 regex = "^1"
-web-view = "^0.6"
+web-view = "^0.7"
 rand = "^0"
 dunce = "^1"
 serde = "^1"
