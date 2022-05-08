@@ -48,12 +48,12 @@ impl CliInstructions {
 		let sort = result.sort;
 		let configuration_path = result.configuration_path;
 
-		let app = clap::App::new(env!("CARGO_PKG_NAME"))
+		let app = clap::Command::new(env!("CARGO_PKG_NAME"))
 			.version(env!("CARGO_PKG_VERSION"))
 			.about(env!("CARGO_PKG_DESCRIPTION"))
 			.arg(
-				clap::Arg::with_name("working_folder")
-					.short("w")
+				clap::Arg::new("working_folder")
+					.short('w')
 					.long("folder")
 					.value_name("FOLDER_PATH")
 					.help("Sets the working folder path for this app (mainly where images will be copied).")
@@ -63,16 +63,16 @@ impl CliInstructions {
 					.default_value(&working_folder),
 			)
 			.arg(
-				clap::Arg::with_name("debug")
-					.short("d")
+				clap::Arg::new("debug")
+					.short('d')
 					.long("debug")
 					.help("If set, show maximum debug information")
 					.takes_value(false)
 					.required(false),
 			)
 			.arg(
-				clap::Arg::with_name("filter")
-					.short("f")
+				clap::Arg::new("filter")
+					.short('f')
 					.long("filter")
 					.value_name("REGEX")
 					.help("Exclude paths which match with this Regular Expression. The match is case insensitive, to the moment.")
@@ -81,8 +81,8 @@ impl CliInstructions {
 					.default_value(&filter),
 			)
 			.arg(
-				clap::Arg::with_name("sort")
-					.short("s")
+				clap::Arg::new("sort")
+					.short('s')
 					.long("sort")
 					.takes_value(true)
 					.possible_values(&["name", "modified"])
@@ -92,13 +92,13 @@ impl CliInstructions {
 					.default_value(&sort),
 			)
 			.arg(
-				clap::Arg::with_name("TARGETS")
+				clap::Arg::new("TARGETS")
 					.help(r#"The browsing folders where search for files, separated by a coma ","."#)
 					.required(false),
 			)
 			.arg(
-				clap::Arg::with_name("config_file_path")
-					.short("c")
+				clap::Arg::new("config_file_path")
+					.short('c')
 					.long("config")
 					.value_name("FILE_PATH")
 					.help("Sets the TOML configuration file path for this application")
@@ -109,8 +109,8 @@ impl CliInstructions {
 			);
 		/*
 		.arg(
-			clap::Arg::with_name("move-mode")
-				.short("m")
+			clap::Arg::new("move-mode")
+				.short('m')
 				.long("mode")
 				.takes_value(true)
 				.possible_values(&["move", "copy"])
@@ -119,16 +119,16 @@ impl CliInstructions {
 				.default_value("move"),
 		)
 		.arg(
-			clap::Arg::with_name("recursive")
-				.short("r")
+			clap::Arg::new("recursive")
+				.short('r')
 				.long("recursive")
 				.help("If set, the application search other files recursively in sub-folders")
 				.takes_value(false)
 				.required(false),
 		)
 		.arg(
-			clap::Arg::with_name("exclude")
-				.short("x")
+			clap::Arg::new("exclude")
+				.short('x')
 				.long("exclude")
 				.value_name("REGEX")
 				.help("The filter for local file name, which is a Regular Expression")
