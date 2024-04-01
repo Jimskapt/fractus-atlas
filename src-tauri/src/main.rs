@@ -1,13 +1,32 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
-use std::path::PathBuf;
+#![allow(clippy::needless_return)]
+#![allow(unused_parens)]
+#![deny(clippy::shadow_reuse)]
+#![deny(clippy::shadow_same)]
+#![deny(clippy::shadow_unrelated)]
+#![deny(clippy::unwrap_in_result)]
 
 #[tokio::main]
 async fn main() {
-	let settings_path = PathBuf::from(format!("./{}.conf.toml", env!("CARGO_PKG_NAME")));
+	let mut args = std::env::args();
 
-	// std::fs::write(&settings_path, toml::to_string(&fractus_atlas_lib::Settings::default()).unwrap()).unwrap();
+	let run_path = std::path::PathBuf::from(args.next().unwrap());
+	let run_path_parent = run_path.parent().unwrap();
 
-	fractus_atlas_lib::run(fractus_atlas_lib::InitSettings::File(settings_path)).await;
+	let settings_path = args
+		.next()
+		.unwrap_or_else(|| format!("{}.conf.toml", env!("CARGO_PKG_NAME")));
+	let settings_pathbuf = std::path::PathBuf::from(settings_path);
+
+	let absolute_settings_path = if settings_pathbuf.is_absolute() {
+		settings_pathbuf
+	} else {
+		run_path_parent.join(settings_pathbuf)
+	};
+
+	fractus_atlas_lib::run(fractus_atlas_lib::InitSettings::File(
+		absolute_settings_path,
+	))
+	.await;
 }

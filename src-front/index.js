@@ -11,10 +11,18 @@ async function refresh() {
 }
 
 async function change_path(event) {
-	console.debug(event);
-
 	let changed = await invoke('change_path', {
 		newPath: event.target.value,
+	});
+
+	if (changed) {
+		refresh().await;
+	}
+}
+
+async function change_position(step) {
+	let changed = await invoke('change_position', {
+		step,
 	});
 
 	if (changed) {
@@ -60,6 +68,13 @@ window.addEventListener('DOMContentLoaded', async function (event) {
 		move_bar.appendChild(move_button);
 	}
 
-	const preview_path = document.querySelector('#preview_path');
-	preview_path.addEventListener('blur', change_path);
+	document.querySelector('#preview_path').addEventListener('blur', change_path);
+	document
+		.querySelector('#previous')
+		.addEventListener('click', async function () {
+			await change_position(-1);
+		});
+	document.querySelector('#next').addEventListener('click', async function () {
+		await change_position(+1);
+	});
 });

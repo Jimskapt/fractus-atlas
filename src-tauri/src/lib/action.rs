@@ -20,8 +20,8 @@ pub fn apply_action(state: Arc<RwLock<crate::AppState>>, action: &AppAction) -> 
 			let max_val: isize = state.read().unwrap().images.len().try_into().unwrap();
 
 			if let Some(position) = old_position {
-				let position: isize = position.try_into().unwrap();
-				let mut new_position: isize = position + step;
+				let position_int: isize = position.try_into().unwrap();
+				let mut new_position: isize = position_int + step;
 
 				if new_position >= max_val {
 					let diff = new_position - max_val;
@@ -30,18 +30,18 @@ pub fn apply_action(state: Arc<RwLock<crate::AppState>>, action: &AppAction) -> 
 				}
 
 				if new_position < 0 {
-					new_position = max_val + new_position;
+					new_position += max_val;
 				}
 
-				let new_position = new_position.try_into().unwrap();
-				state.write().unwrap().current_position = Some(new_position);
+				let new_position_usize: usize = new_position.try_into().unwrap();
+				state.write().unwrap().current_position = Some(new_position_usize);
 				state.write().unwrap().display_path = format!(
 					"{}",
 					state
 						.read()
 						.unwrap()
 						.images
-						.get(new_position)
+						.get(new_position_usize)
 						.unwrap()
 						.get_current()
 						.display()

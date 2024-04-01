@@ -1,6 +1,7 @@
-**/fractus-atlas.conf.toml
+**/*.conf.toml
 /output.log
 /fractus-atlas
+/src-front/wasm/
 
 # Logs
 logs

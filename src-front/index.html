@@ -7,16 +7,17 @@
 		<link rel="stylesheet" href="styles.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Tauri App</title>
-		<script type="module" src="/main.js" defer></script>
+		<script src="./index.js" defer></script>
 	</head>
 
-	<body>
+	<body id="index">
+		<a href="/settings.html" id="settings_btn">⚙️</a>
 		<div id="move_bar"></div>
-		<p style="text-align: center">
+		<button id="previous">◀</button>
+		<p id="preview_container">
 			<img src="http://image.localhost/" alt="" id="preview" />
 		</p>
-		<p>
-			<input id="preview_path" value="loading" />
-		</p>
+		<button id="next">▶</button>
+		<input id="preview_path" value="loading" />
 	</body>
 </html>

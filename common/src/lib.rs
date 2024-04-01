@@ -1,6 +1,12 @@
+#![allow(clippy::needless_return)]
+#![deny(clippy::shadow_reuse)]
+#![deny(clippy::shadow_same)]
+#![deny(clippy::shadow_unrelated)]
+#![deny(clippy::unwrap_in_result)]
+
 use std::path::PathBuf;
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct Settings {
 	pub input_folders: Vec<InputFolder>,
 	exclude_paths: Vec<InputFolder>,
@@ -28,7 +34,7 @@ impl Default for Settings {
 			}],
 			exclude_paths: vec![],
 			output_folders: vec![OutputFolder {
-				path: PathBuf::from("./fractus-atlas/"),
+				path: PathBuf::from("fractus-atlas"),
 				name: String::from("fractus-atlas"),
 				shortcuts_or: vec![Shortcut::Key(String::from("m"))],
 			}],
@@ -101,4 +107,11 @@ impl FileFilter {
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub enum Shortcut {
 	Key(String),
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub enum SaveMessage {
+	Error(String),
+	Warning(String),
+	Confirm(String),
 }

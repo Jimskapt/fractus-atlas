@@ -1,0 +1,28 @@
+<!-- @format -->
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<link rel="stylesheet" href="styles.css" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Settings</title>
+		<script src="/settings.js" defer></script>
+		<script type="module" src="./settings.mod.js" defer></script>
+	</head>
+
+	<body id="settings">
+		<p><a href="/index.html">⇽ back</a></p>
+
+		<form>
+			<label for="settings_path">📂 file path</label>
+			<input type="text" id="settings_path" onchange="set_modified()" />
+
+			<div id="dyn_settings_form"></div>
+
+			<div id="save_messages"></div>
+
+			<button id="save">💾 save</button>
+		</form>
+	</body>
+</html>
