@@ -1,0 +1,22 @@
+[workspace]
+members = [
+    "common",
+    "src-tauri",
+    "src-wasm"
+]
+resolver = "2"
+
+[workspace.dependencies]
+serde = "1.0.197"
+serde_json = "1.0.115"
+
+[workspace.lints.rust]
+unused_parens = "allow"
+
+[workspace.lints.clippy]
+needless_return = "allow"
+identity_op = "allow"
+shadow_reuse = "deny"
+shadow_same = "deny"
+shadow_unrelated = "deny"
+unwrap_in_result = "deny"

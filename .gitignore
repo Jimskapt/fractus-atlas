@@ -2,6 +2,7 @@
 /output.log
 /fractus-atlas
 /src-front/wasm/
+target/
 
 # Logs
 logs

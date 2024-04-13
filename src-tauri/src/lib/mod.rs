@@ -1,11 +1,3 @@
-#![allow(clippy::needless_return)]
-#![allow(unused_parens)]
-#![allow(clippy::identity_op)]
-#![deny(clippy::shadow_reuse)]
-#![deny(clippy::shadow_same)]
-#![deny(clippy::shadow_unrelated)]
-#![deny(clippy::unwrap_in_result)]
-
 use rand::Rng;
 use std::{
 	collections::BTreeMap,
@@ -60,35 +52,6 @@ pub async fn run(init_settings: InitSettings) {
 		shortcuts,
 	}));
 
-	let state_for_input = state.clone();
-	let folders = state_for_input
-		.read()
-		.unwrap()
-		.settings
-		.input_folders
-		.clone();
-	for input in folders {
-		let state_for_loop = state.clone();
-
-		tokio::task::spawn(async move {
-			let mut temp = tokio::fs::read_dir(&input.path).await.unwrap();
-			while let Ok(Some(entry)) = temp.next_entry().await {
-				if entry.file_type().await.unwrap().is_file()
-					&& input.filter(&input.path.join(entry.file_name()))
-				{
-					state_for_loop.write().unwrap().images.push(Image {
-						origin: input.path.join(entry.file_name()),
-						moved: None,
-					});
-
-					if state_for_loop.read().unwrap().current_position.is_none() {
-						state_for_loop.write().unwrap().current_position = Some(0);
-					}
-				}
-			}
-		});
-	}
-
 	tauri::Builder::default()
 		.plugin(tauri_plugin_shell::init())
 		.invoke_handler(tauri::generate_handler![
@@ -100,7 +63,8 @@ pub async fn run(init_settings: InitSettings) {
 			change_position,
 			get_settings,
 			set_settings,
-			get_settings_path
+			get_settings_path,
+			update_files_list
 		])
 		.manage(state.clone())
 		.register_uri_scheme_protocol("image", get_image)
@@ -256,6 +220,38 @@ fn get_settings_path(state: tauri::State<Arc<RwLock<AppState>>>) -> std::path::P
 		.as_ref()
 		.unwrap_or(&default_path)
 		.clone()
+}
+#[tauri::command]
+fn update_files_list(state: tauri::State<Arc<RwLock<AppState>>>) {
+	let state_for_input = state.inner().clone();
+	let folders = state_for_input
+		.read()
+		.unwrap()
+		.settings
+		.input_folders
+		.clone();
+
+	for input in folders {
+		let state_for_loop = state.inner().clone();
+
+		tokio::task::spawn(async move {
+			let mut temp = tokio::fs::read_dir(&input.path).await.unwrap();
+			while let Ok(Some(entry)) = temp.next_entry().await {
+				if entry.file_type().await.unwrap().is_file()
+					&& input.filter(&input.path.join(entry.file_name()))
+				{
+					state_for_loop.write().unwrap().images.push(Image {
+						origin: input.path.join(entry.file_name()),
+						moved: None,
+					});
+
+					if state_for_loop.read().unwrap().current_position.is_none() {
+						state_for_loop.write().unwrap().current_position = Some(0);
+					}
+				}
+			}
+		});
+	}
 }
 
 fn exec_move(from: &std::path::Path, to: &std::path::Path) -> Result<std::path::PathBuf, String> {

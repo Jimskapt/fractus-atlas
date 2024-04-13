@@ -1,9 +1,3 @@
-#![allow(clippy::needless_return)]
-#![deny(clippy::shadow_reuse)]
-#![deny(clippy::shadow_same)]
-#![deny(clippy::shadow_unrelated)]
-#![deny(clippy::unwrap_in_result)]
-
 use std::path::PathBuf;
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -47,8 +41,8 @@ impl Default for Settings {
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct InputFolder {
 	pub path: PathBuf,
-	name: Option<String>,
-	filters: Vec<FileFilter>,
+	pub name: Option<String>,
+	pub filters: Vec<FileFilter>,
 }
 impl InputFolder {
 	pub fn filter(&self, path: &std::path::Path) -> bool {
@@ -70,7 +64,7 @@ pub struct OutputFolder {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
-enum FileFilter {
+pub enum FileFilter {
 	All,
 	Extension(String),
 	MimeType(String),

@@ -77,4 +77,10 @@ window.addEventListener('DOMContentLoaded', async function (event) {
 	document.querySelector('#next').addEventListener('click', async function () {
 		await change_position(+1);
 	});
+
+	let that = this;
+	that.setTimeout(async function () {
+		await invoke('update_files_list');
+		that.setTimeout(refresh, 500);
+	}, 500);
 });

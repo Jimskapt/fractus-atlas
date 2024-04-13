@@ -56,7 +56,8 @@ h1 {
 }
 
 input,
-button {
+button,
+select {
 	border-radius: 8px;
 	border: 1px solid transparent;
 	padding: 0.5em 0.8em;
@@ -73,16 +74,21 @@ button {
 	cursor: pointer;
 }
 
-button:hover {
+input:hover,
+button:hover,
+select:hover {
 	border-color: #396cd8;
 }
-button:active {
+button:active,
+select:active {
+	color: black;
 	border-color: #396cd8;
 	background-color: #e8e8e8;
 }
 
 input,
-button {
+button,
+select {
 	outline: none;
 }
 
@@ -183,14 +189,18 @@ body#index {
 
 /* --------------------------------------------------- */
 
-#settings label {
+#settings label.solo {
 	display: block;
 	margin-top: 2em;
 }
 
-#settings input {
+#settings input.solo {
 	display: block;
 	width: 90vw;
+}
+
+#settings #input_folders_fields input {
+	margin: 0.2em 0;
 }
 
 #settings #save_messages {
@@ -229,6 +239,26 @@ body#index {
 	cursor: pointer;
 	width: 100%;
 	margin-top: 1em;
+}
+
+#settings fieldset {
+	margin-top: 0.5em;
+	border-radius: 0.5em;
+}
+
+#settings select {
+	margin-right: 0.5em;
+}
+
+#settings #input_folders_fields,
+#settings #output_folders_fields {
+	margin-left: 3em;
+}
+
+#settings p.or_separator {
+	margin: 0;
+	margin-left: 2em;
+	font-style: italic;
 }
 
 /* --------------------------------------------------- */

@@ -1,11 +1,5 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-#![allow(clippy::needless_return)]
-#![allow(unused_parens)]
-#![deny(clippy::shadow_reuse)]
-#![deny(clippy::shadow_same)]
-#![deny(clippy::shadow_unrelated)]
-#![deny(clippy::unwrap_in_result)]
 
 #[tokio::main]
 async fn main() {
