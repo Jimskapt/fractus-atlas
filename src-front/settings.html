@@ -15,13 +15,13 @@
 		<p><a href="/index.html">⇽ back</a></p>
 
 		<form>
-			<label for="settings_path" class="solo">💾 settings save file path</label>
-			<input
-				type="text"
-				id="settings_path"
-				onchange="set_modified(true)"
-				class="solo"
-			/>
+			<label for="settings_path" class="solo"
+				>💾 settings save file path
+				<i
+					>(set to empty to only temporary save in memory until closing)</i
+				></label
+			>
+			<input type="text" id="settings_path" class="solo" />
 
 			<div id="dyn_settings_form"></div>
 

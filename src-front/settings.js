@@ -5,6 +5,34 @@ const { invoke } = window.__TAURI__.core;
 
 var modified = false;
 
+function change_settings_path(event) {
+	if (!modified) {
+		invoke('set_settings_path', {
+			settingsPath: event.target.value,
+		});
+
+		setTimeout(function () {
+			location.reload(true);
+		}, 500);
+	} else {
+		set_modified(true);
+	}
+}
+
+window.addEventListener('DOMContentLoaded', function () {
+	document
+		.querySelector('#settings_path')
+		.addEventListener('blur', change_settings_path);
+});
+
+window.onbeforeunload = function () {
+	if (modified) {
+		return 'unsaved changes';
+	} else {
+		return null;
+	}
+};
+
 // used by wasm :
 function set_modified(do_no_lock_save_path) {
 	modified = true;
@@ -34,11 +62,6 @@ function set_unmodified() {
 
 	document.querySelector('#settings_path').removeAttribute('readonly');
 }
-
-window.onbeforeunload = function () {
-	if (modified) {
-		return 'unsaved changes';
-	} else {
-		return null;
-	}
-};
+function is_modified() {
+	return modified;
+}

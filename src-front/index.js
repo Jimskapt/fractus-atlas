@@ -3,11 +3,31 @@
 const { invoke } = window.__TAURI__.core;
 
 async function refresh() {
+	document.querySelector('#preview').src =
+		'http://image.localhost/?rand=' + Math.random() * 9999999;
 	document.querySelector('#preview_path').value = await invoke(
 		'get_current_path'
 	);
-	document.querySelector('#preview').src =
-		'http://image.localhost/?rand=' + Math.random() * 9999999;
+
+	var position = await invoke('get_current_position');
+	if (position === null || position === undefined) {
+		position = '?';
+	} else {
+		position += 1;
+	}
+
+	document.querySelector('#position_counter').innerText =
+		position + ' / ' + (await invoke('get_images_length'));
+
+	let ai_prompt = await invoke('get_ai_prompt');
+	if (ai_prompt != null && ai_prompt != undefined) {
+		document.querySelector('#ai_prompt #ai_content').innerText =
+			'🧠 A.I. prompt detected :\n\n' + ai_prompt;
+		document.querySelector('#ai_prompt #ai_icon').innerText = '🧠';
+	} else {
+		document.querySelector('#ai_prompt #ai_content').innerText = '';
+		document.querySelector('#ai_prompt #ai_icon').innerText = '';
+	}
 }
 
 async function change_path(event) {
@@ -78,9 +98,6 @@ window.addEventListener('DOMContentLoaded', async function (event) {
 		await change_position(+1);
 	});
 
-	let that = this;
-	that.setTimeout(async function () {
-		await invoke('update_files_list');
-		that.setTimeout(refresh, 500);
-	}, 500);
+	await invoke('update_files_list');
+	this.setTimeout(refresh, 500);
 });

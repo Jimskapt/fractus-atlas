@@ -154,8 +154,16 @@ body#index {
 	right: 0;
 	left: 0;
 	text-align: center;
-	height: 4vh;
-	margin: 0 1vw 2vh 1vw;
+	height: 3vh;
+	margin: 0 1vw 1vh 1vw;
+	z-index: 10;
+}
+
+#index #bottom_tools {
+	position: absolute;
+	bottom: calc(1vh + 3vh + 1.5em);
+	right: 1vw;
+	font-size: 0.8em;
 	z-index: 10;
 }
 
@@ -185,6 +193,30 @@ body#index {
 	position: absolute;
 	top: 1vh;
 	left: 0.3vw;
+}
+
+/* --------------------------------------------------- */
+
+#index #ai_prompt #ai_content {
+	visibility: hidden;
+	background-color: black;
+	opacity: 0.9;
+	color: #fff;
+	border-radius: 1em;
+	padding: 1em;
+
+	position: fixed;
+	top: 10vh;
+	left: 10vw;
+	width: 80vw;
+	height: 80vh;
+	z-index: 100;
+
+	white-space: pre-wrap;
+}
+
+#index #ai_prompt:hover #ai_content {
+	visibility: visible;
 }
 
 /* --------------------------------------------------- */
@@ -259,6 +291,12 @@ body#index {
 	margin: 0;
 	margin-left: 2em;
 	font-style: italic;
+}
+
+/* --------------------------------------------------- */
+
+#ai_prompt_page pre {
+	white-space: pre-wrap;
 }
 
 /* --------------------------------------------------- */

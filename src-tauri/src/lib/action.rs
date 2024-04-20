@@ -5,6 +5,7 @@ use rand::{distributions::Alphanumeric, Rng};
 #[derive(Debug, Clone)]
 pub enum AppAction {
 	ChangePosition(isize),
+	ChangeRandomPosition,
 	Move(usize),
 	RestoreImage,
 }
@@ -34,21 +35,22 @@ pub fn apply_action(state: Arc<RwLock<crate::AppState>>, action: &AppAction) -> 
 				}
 
 				let new_position_usize: usize = new_position.try_into().unwrap();
-				state.write().unwrap().current_position = Some(new_position_usize);
-				state.write().unwrap().display_path = format!(
-					"{}",
-					state
-						.read()
-						.unwrap()
-						.images
-						.get(new_position_usize)
-						.unwrap()
-						.get_current()
-						.display()
-				);
+				state
+					.write()
+					.unwrap()
+					.set_position(Some(new_position_usize));
 
 				changed = (old_position != state.read().unwrap().current_position);
 			}
+		}
+		AppAction::ChangeRandomPosition => {
+			let max_val = state.read().unwrap().images.len();
+
+			let new_position = rand::thread_rng().gen_range(0..max_val);
+
+			state.write().unwrap().set_position(Some(new_position));
+
+			changed = true;
 		}
 		AppAction::Move(id) => {
 			let current_position = state.read().unwrap().current_position;
@@ -102,7 +104,7 @@ pub fn apply_action(state: Arc<RwLock<crate::AppState>>, action: &AppAction) -> 
 
 						if let Some(image) = state_w.images.get_mut(position) {
 							image.moved = Some(new_path);
-							state_w.display_path = format!("{}", image.get_current().display());
+							state_w.set_position(Some(position));
 							state_w.settings.steps_after_move
 						} else {
 							todo!()
@@ -167,7 +169,7 @@ pub fn apply_action(state: Arc<RwLock<crate::AppState>>, action: &AppAction) -> 
 					let mut state_w = state.write().unwrap();
 					if let Some(image) = state_w.images.get_mut(position) {
 						image.moved = Some(new_path);
-						state_w.display_path = format!("{}", image.get_current().display())
+						state_w.set_position(Some(position));
 					}
 				}
 			}

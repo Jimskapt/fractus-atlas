@@ -17,7 +17,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 path = "src/lib/mod.rs"
 
 [build-dependencies]
-tauri-build = { version = "2.0.0-beta.11", features = [] }
+tauri-build = { version = "2.0.0-beta.12", features = [] }
 
 [dependencies]
 common = { path = "../common" }
@@ -25,12 +25,13 @@ common = { path = "../common" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 
-tauri = { version = "2.0.0-beta.14", features = [] }
+tauri = { version = "2.0.0-beta.15", features = [] }
 tauri-plugin-shell = "2.0.0-beta.3"
 toml = "0.8.12"
 tokio = { version = "1.37.0", features = ["rt-multi-thread", "macros", "fs", "time"] }
 rand = "0.8.5"
 trash = "4.1.0"
+encoding_rs = "0.8.34"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem

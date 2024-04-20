@@ -30,7 +30,7 @@ pub async fn build_settings_form() {
 
 	//////////////////////
 
-	let settings_path: String =
+	let settings_path: Option<std::path::PathBuf> =
 		serde_wasm_bindgen::from_value(invoke("get_settings_path", JsValue::NULL).await).unwrap();
 	document
 		.query_selector("input#settings_path")
@@ -38,7 +38,10 @@ pub async fn build_settings_form() {
 		.unwrap()
 		.dyn_into::<web_sys::HtmlInputElement>()
 		.unwrap()
-		.set_value(&settings_path);
+		.set_value(&match settings_path {
+			Some(path) => format!("{}", path.display()),
+			None => String::new(),
+		});
 
 	//////////////////////
 
@@ -147,7 +150,6 @@ pub async fn build_settings_form() {
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SaveSettingsPayload {
-	settings_path: std::path::PathBuf,
 	new_settings: common::Settings,
 }
 
@@ -155,17 +157,6 @@ struct SaveSettingsPayload {
 pub async fn save_settings() {
 	let window = web_sys::window().unwrap();
 	let document = window.document().unwrap();
-
-	//////////////////////
-
-	let settings_path_value = document
-		.query_selector("input#settings_path")
-		.unwrap()
-		.unwrap()
-		.dyn_into::<web_sys::HtmlInputElement>()
-		.unwrap()
-		.value();
-	let settings_path = settings_path_value.parse().unwrap();
 
 	//////////////////////
 
@@ -185,7 +176,8 @@ pub async fn save_settings() {
 
 	//////////////////////
 
-	let mut new_settings = common::Settings::default();
+	let mut new_settings: common::Settings =
+		serde_wasm_bindgen::from_value(invoke("get_settings", JsValue::NULL).await).unwrap();
 	new_settings.steps_after_move = steps_after_move;
 	new_settings.input_folders = input_folders;
 	new_settings.output_folders = output_folders;
@@ -195,11 +187,7 @@ pub async fn save_settings() {
 	let messages: Vec<common::SaveMessage> = serde_wasm_bindgen::from_value(
 		invoke(
 			"set_settings",
-			serde_wasm_bindgen::to_value(&SaveSettingsPayload {
-				settings_path,
-				new_settings,
-			})
-			.unwrap(),
+			serde_wasm_bindgen::to_value(&SaveSettingsPayload { new_settings }).unwrap(),
 		)
 		.await,
 	)
