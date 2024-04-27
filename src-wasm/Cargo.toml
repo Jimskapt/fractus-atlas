@@ -1,0 +1,46 @@
+[package]
+name = "ui"
+version = "2.0.0"
+authors = ["Jimskapt <rami.programmer@gmail.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["console_error_panic_hook"]
+
+[dependencies]
+common = { path = "../common" }
+
+serde = { workspace = true, features = ["serde_derive", "derive"] }
+serde_json = { workspace = true }
+
+serde-wasm-bindgen = "0.6.5"
+wasm-bindgen = "0.2.92"
+wasm-bindgen-futures = "0.4.42"
+web-sys = { version = "0.3.69", features = [
+    'Document',
+    'Element',
+    'HtmlElement',
+    'HtmlInputElement',
+    'HtmlSelectElement',
+    'Node',
+    'Window',
+] }
+
+# The `console_error_panic_hook` crate provides better debugging of panics by
+# logging them with `console.error`. This is great for development, but requires
+# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
+# code size when deploying.
+console_error_panic_hook = { version = "0.1.7", optional = true }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.42"
+
+[profile.release]
+# Tell `rustc` to optimize for small code size.
+opt-level = "s"
+
+[lints]
+workspace = true

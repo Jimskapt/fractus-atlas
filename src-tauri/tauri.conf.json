@@ -1,0 +1,37 @@
+{
+  "productName": "fractus-atlas",
+  "version": "2.0.0",
+  "identifier": "com.jimskapt.fractus-atlas",
+  "build": {
+    "frontendDist": "../src-front"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "fullscreen": false,
+        "resizable": true,
+        "title": "fractus-atlas",
+        "width": 800,
+        "height": 600,
+        "maximized": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "msi",
+      "updater"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ]
+  }
+}

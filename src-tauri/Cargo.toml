@@ -1,0 +1,46 @@
+[package]
+name = "fractus-atlas"
+version = "2.0.0"
+description = "An image viewer which allows you to quickly move them in folders."
+homepage = "https://github.com/Jimskapt/fractus-atlas"
+repository = "https://github.com/Jimskapt/fractus-atlas"
+keywords = ["image", "images", "fast", "browsing", "viewer", "folder", "folders", "sort", "sorting"]
+publish = false
+authors = ["Jimskapt <rami.programmer@gmail.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "fractus_atlas_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+path = "src/lib/mod.rs"
+
+[build-dependencies]
+tauri-build = { version = "2.0.0-beta.13", features = [] }
+
+[dependencies]
+common = { path = "../common" }
+
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+
+tauri = { version = "2.0.0-beta.16", features = [] }
+tauri-plugin-shell = "2.0.0-beta.3"
+toml = "0.8.12"
+tokio = { version = "1.37.0", features = ["rt-multi-thread", "macros", "fs", "time"] }
+rand = "0.8.5"
+trash = "4.1.0"
+encoding_rs = "0.8.34"
+async-recursion = "1.1.1"
+notify = "6.1.1"
+futures = "0.3.30"
+open = "5.1.2"
+
+[features]
+# this feature is used for production builds or when `devPath` points to the filesystem
+# DO NOT REMOVE!!
+custom-protocol = ["tauri/custom-protocol"]
+
+[lints]
+workspace = true
