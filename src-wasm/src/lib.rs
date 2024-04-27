@@ -71,6 +71,7 @@ pub async fn build_settings_form() {
 				i,
 				format!("{}", input_folder.path.display()),
 				input_folder.name.as_ref(),
+				input_folder.recursivity.unwrap_or(false),
 				&input_folder.filters,
 			);
 			id = i;
@@ -83,6 +84,7 @@ pub async fn build_settings_form() {
 			id,
 			"",
 			Some(""),
+			false,
 			&common::Settings::default()
 				.input_folders
 				.first()

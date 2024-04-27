@@ -30,6 +30,7 @@ pub fn update_input_folders(id: usize) {
 			id + 1,
 			"",
 			Some(""),
+			false,
 			&common::Settings::default()
 				.input_folders
 				.first()
@@ -92,6 +93,14 @@ pub fn save() -> (Vec<common::InputFolder>, Vec<common::SaveMessage>) {
 			.unwrap()
 			.value();
 
+		let recursivity_value = document
+			.query_selector(&format!("#folder_recursivity_{i}"))
+			.unwrap()
+			.unwrap()
+			.dyn_into::<web_sys::HtmlInputElement>()
+			.unwrap()
+			.checked();
+
 		if !path_value.trim().is_empty() {
 			let mut filters = vec![];
 			let mut i_filter = 1;
@@ -131,6 +140,7 @@ pub fn save() -> (Vec<common::InputFolder>, Vec<common::SaveMessage>) {
 				},
 				path: std::path::PathBuf::from(path_value),
 				filters,
+				recursivity: Some(recursivity_value),
 			});
 		}
 

@@ -6,6 +6,7 @@ pub fn generate_input_folder(
 	id: usize,
 	path: impl Into<String>,
 	name: Option<impl Into<String>>,
+	recursivity: bool,
 	filters: &[common::FileFilter],
 ) {
 	let fieldset = document.create_element("fieldset").unwrap();
@@ -68,6 +69,32 @@ pub fn generate_input_folder(
 	command.forget();
 
 	fieldset.append_child(&path_input).unwrap();
+
+	///////////////////
+
+	let recursivity_check = document.create_element("input").unwrap();
+	recursivity_check.set_attribute("type", "checkbox").unwrap();
+	recursivity_check
+		.set_attribute("id", &format!("folder_recursivity_{id}"))
+		.unwrap();
+	recursivity_check
+		.set_attribute("onchange", "set_modified(false)")
+		.unwrap();
+	if recursivity {
+		recursivity_check
+			.set_attribute("checked", "checked")
+			.unwrap();
+	}
+
+	fieldset.append_child(&recursivity_check).unwrap();
+
+	let recursivity_label = document.create_element("label").unwrap();
+	recursivity_label
+		.set_attribute("for", &format!("folder_recursivity_{id}"))
+		.unwrap();
+	recursivity_label.set_text_content(Some(" is recursive : searching files in its sub-folders"));
+
+	fieldset.append_child(&recursivity_label).unwrap();
 
 	///////////////////
 

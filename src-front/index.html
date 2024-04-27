@@ -5,26 +5,59 @@
 	<head>
 		<meta charset="UTF-8" />
 		<link rel="stylesheet" href="styles.css" />
+		<link rel="stylesheet" href="index.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Tauri App</title>
 		<script src="./index.js" defer></script>
 	</head>
 
 	<body id="index">
-		<a href="/settings.html" id="settings_btn">⚙️</a>
-		<div id="move_bar"></div>
-		<button id="previous">◀</button>
-		<p id="preview_container">
-			<img src="http://image.localhost/" alt="" id="preview" />
-		</p>
-		<button id="next">▶</button>
-		<span id="bottom_tools">
+		<input type="text" id="current-path" value="⏳ loading path ..." />
+		<nav>
+			<a href="/settings.html">
+				<button id="settings" title="change settings of this program">
+					⚙️
+				</button>
+			</a>
+			<span class="spacer">|</span>
+			<span id="position_counter">? / ?</span>
+			<span class="spacer">|</span>
+			<button id="go-previous" title="go to previous image">◀️</button>
+			<button id="go-random" title="go to a random position">🔀</button>
+			<button id="go-next" title="go to next image">▶️</button>
+			<span class="spacer">|</span>
+			<button id="open-folder" title="open parent folder of this file" disabled>
+				📁
+			</button>
+			<button id="open-file" title="open this file with O.S. viewer" disabled>
+				🖼️
+			</button>
 			<a href="/ai_prompt.html" id="ai_prompt">
-				<span id="ai_icon"></span>
+				<button
+					id="ai_icon"
+					title="A.I. prompt detected, click to display"
+					disabled
+				>
+					🧠
+				</button>
 				<pre id="ai_content"></pre>
 			</a>
-			<span id="position_counter"></span>
-		</span>
-		<input id="preview_path" value="loading" />
+		</nav>
+		<div id="move-bar">
+			<button
+				id="restore-origin"
+				title="restore this file into its origin path"
+				disabled
+			>
+				↩️ restore
+			</button>
+		</div>
+
+		<button id="previous">◀</button>
+		<button id="next">▶</button>
+
+		<div id="preview_container">
+			<img src="http://image.localhost/" alt="" id="preview" />
+		</div>
 	</body>
 </html>

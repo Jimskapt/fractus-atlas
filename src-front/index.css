@@ -1,0 +1,118 @@
+/** @format */
+
+body#index {
+	margin: 0;
+	padding: 0.5em;
+	width: calc(100vw - 2 * 0.5em);
+	height: calc(100vh - 2 * 0.5em);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+	align-items: center;
+}
+
+body#index nav,
+body#index #move-bar,
+body#index #current-path {
+	width: 95vw;
+	margin: 0;
+	text-align: center;
+	z-index: 50;
+}
+
+body#index nav .spacer {
+	margin: 0 1.5vw;
+	color: #aaa;
+	font-size: 0.5em;
+}
+
+body#index nav button,
+body#index #move-bar button,
+body#index #current-path {
+	border: 1px solid rgba(0, 0, 0, 0);
+	border-radius: 0.5vw;
+	padding: 0.3vw;
+	margin: 0.2em 0.1em;
+	opacity: 0.75;
+}
+
+body#index nav button:disabled,
+body#index #move-bar button:disabled,
+body#index #current-path:disabled {
+	opacity: 0.1;
+}
+
+body#index nav button:hover:not(:disabled),
+body#index #move-bar button:hover:not(:disabled),
+body#index #current-path:hover:not(:disabled) {
+	border: 1px solid rgba(0, 0, 0, 1);
+	opacity: 1;
+}
+
+body#index nav button:hover,
+body#index #move-bar button:hover {
+	cursor: pointer;
+}
+
+body#index #position_counter {
+	font-family: monospace, consolas;
+}
+
+#index #previous,
+#index #next {
+	position: absolute;
+	z-index: 20;
+	top: 45vh;
+	height: 10vh;
+	min-width: 3em;
+	cursor: pointer;
+	padding: 0;
+	text-align: center;
+}
+
+#index #previous {
+	left: 1vw;
+}
+
+#index #next {
+	right: 1vw;
+}
+
+#index #preview_container {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+#index #preview_container #preview {
+	max-width: 95%;
+	max-height: 75vh;
+}
+
+/* --------------------------------------------------- */
+
+#index #ai_prompt #ai_content {
+	visibility: hidden;
+	background-color: black;
+	opacity: 0.9;
+	color: #fff;
+	border-radius: 1em;
+	padding: 1em;
+
+	position: fixed;
+	top: 10vh;
+	left: 10vw;
+	width: 80vw;
+	height: 80vh;
+	z-index: 100;
+
+	white-space: pre-wrap;
+}
+
+#index #ai_prompt:hover #ai_content {
+	visibility: visible;
+}

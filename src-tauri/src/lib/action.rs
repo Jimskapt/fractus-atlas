@@ -1,4 +1,5 @@
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use rand::{distributions::Alphanumeric, Rng};
 
@@ -10,15 +11,19 @@ pub enum AppAction {
 	RestoreImage,
 }
 
-pub fn apply_action(state: Arc<RwLock<crate::AppState>>, action: &AppAction) -> bool {
+#[async_recursion::async_recursion]
+pub async fn apply_action(
+	state: Arc<RwLock<crate::AppState>>,
+	action: &AppAction,
+) -> Result<bool, ()> {
 	let mut changed = false;
 
 	match action {
 		AppAction::ChangePosition(step) => {
 			// TODO : check .try_into().unwrap() here
 
-			let old_position = state.read().unwrap().current_position;
-			let max_val: isize = state.read().unwrap().images.len().try_into().unwrap();
+			let old_position = state.read().await.current_position;
+			let max_val: isize = state.read().await.images.len().try_into().unwrap();
 
 			if let Some(position) = old_position {
 				let position_int: isize = position.try_into().unwrap();
@@ -35,34 +40,31 @@ pub fn apply_action(state: Arc<RwLock<crate::AppState>>, action: &AppAction) -> 
 				}
 
 				let new_position_usize: usize = new_position.try_into().unwrap();
-				state
-					.write()
-					.unwrap()
-					.set_position(Some(new_position_usize));
+				state.write().await.set_position(Some(new_position_usize));
 
-				changed = (old_position != state.read().unwrap().current_position);
+				changed = (old_position != state.read().await.current_position);
 			}
 		}
 		AppAction::ChangeRandomPosition => {
-			let max_val = state.read().unwrap().images.len();
+			let max_val = state.read().await.images.len();
 
 			let new_position = rand::thread_rng().gen_range(0..max_val);
 
-			state.write().unwrap().set_position(Some(new_position));
+			state.write().await.set_position(Some(new_position));
 
 			changed = true;
 		}
 		AppAction::Move(id) => {
-			let current_position = state.read().unwrap().current_position;
+			let current_position = state.read().await.current_position;
 			if let Some(position) = current_position {
 				let mut new_path = std::path::PathBuf::new();
 
 				{
-					let rstate = state.read().unwrap();
+					let rstate = state.read().await;
 					let output_folder = rstate.settings.output_folders.get(*id);
 
 					if let Some(output) = output_folder {
-						if let Some(image) = state.read().unwrap().images.get(position) {
+						if let Some(image) = state.read().await.images.get(position) {
 							let old_path = image.get_current();
 							new_path = output.path.join::<String>(
 								image
@@ -100,7 +102,7 @@ pub fn apply_action(state: Arc<RwLock<crate::AppState>>, action: &AppAction) -> 
 
 				if changed {
 					let steps = {
-						let mut state_w = state.write().unwrap();
+						let mut state_w = state.write().await;
 
 						if let Some(image) = state_w.images.get_mut(position) {
 							image.moved = Some(new_path);
@@ -111,30 +113,30 @@ pub fn apply_action(state: Arc<RwLock<crate::AppState>>, action: &AppAction) -> 
 						}
 					};
 
-					apply_action(state, &AppAction::ChangePosition(steps));
+					apply_action(state, &AppAction::ChangePosition(steps))
+						.await
+						.unwrap();
 				}
 			}
 		}
 		AppAction::RestoreImage => {
-			let current_position = state.read().unwrap().current_position;
+			let current_position = state.read().await.current_position;
 			if let Some(position) = current_position {
-				let mut new_path = std::path::PathBuf::new();
-
 				{
-					if let Some(image) = state.read().unwrap().images.get(position) {
-						let old_path = image.get_current();
-						new_path = image.origin.clone();
+					if let Some(image) = state.read().await.images.get(position) {
+						let current_path = image.get_current();
+						let mut origin_path = image.origin.clone();
 
-						while new_path.exists() {
+						while origin_path.exists() {
 							let rand_id: String = rand::thread_rng()
 								.sample_iter(&Alphanumeric)
 								.take(8)
 								.map(char::from)
 								.collect();
 
-							let origin_parent = new_path.parent().unwrap();
+							let origin_parent = origin_path.parent().unwrap();
 
-							new_path = origin_parent.join(format!(
+							origin_path = origin_parent.join(format!(
 								"{}{}{}",
 								image
 									.origin
@@ -150,15 +152,17 @@ pub fn apply_action(state: Arc<RwLock<crate::AppState>>, action: &AppAction) -> 
 							));
 						}
 
-						if let Some(parent) = new_path.parent() {
+						if let Some(parent) = origin_path.parent() {
 							std::fs::create_dir_all(parent).ok();
 						}
 
-						if old_path != new_path && std::fs::copy(&old_path, &new_path).is_ok() {
-							if trash::delete(&old_path).is_ok() {
+						if current_path != origin_path
+							&& std::fs::copy(&current_path, &origin_path).is_ok()
+						{
+							if trash::delete(&current_path).is_ok() {
 								changed = true;
 							} else {
-								trash::delete(&new_path).ok();
+								trash::delete(&origin_path).ok();
 								// TODO : warn user
 							}
 						}
@@ -166,9 +170,9 @@ pub fn apply_action(state: Arc<RwLock<crate::AppState>>, action: &AppAction) -> 
 				}
 
 				if changed {
-					let mut state_w = state.write().unwrap();
+					let mut state_w = state.write().await;
 					if let Some(image) = state_w.images.get_mut(position) {
-						image.moved = Some(new_path);
+						image.moved = None;
 						state_w.set_position(Some(position));
 					}
 				}
@@ -176,5 +180,5 @@ pub fn apply_action(state: Arc<RwLock<crate::AppState>>, action: &AppAction) -> 
 		}
 	}
 
-	changed
+	Ok(changed)
 }

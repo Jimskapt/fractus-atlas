@@ -1,0 +1,78 @@
+/** @format */
+
+#settings label.solo {
+	display: block;
+	margin-top: 2em;
+}
+
+#settings input.solo {
+	display: block;
+	width: 100%;
+}
+
+#settings #input_folders_fields input {
+	margin: 0.2em 0;
+}
+
+#settings #save_messages {
+	margin-top: 2em;
+}
+
+#settings #save_messages p {
+	border-width: 3px;
+	border-style: solid;
+	box-shadow: 5px 5px 10px 0px;
+	border-radius: 1em;
+	padding: 0.5em;
+	font-weight: bold;
+}
+
+#settings #save_messages .confirm {
+	background-color: darkseagreen;
+	color: green;
+	border-color: green;
+}
+
+#settings #save_messages .error {
+	background-color: pink;
+	color: red;
+	border-color: red;
+}
+
+#settings #save_messages .warning {
+	background-color: burlywood;
+	color: orangered;
+	border-color: orangered;
+}
+
+#settings #save {
+	height: 5em;
+	cursor: pointer;
+	width: 100%;
+	margin-top: 1em;
+}
+
+#settings fieldset {
+	margin-top: 0.5em;
+	border-radius: 0.5em;
+}
+
+#settings select {
+	margin-right: 0.5em;
+}
+
+#settings #input_folders_fields,
+#settings #output_folders_fields {
+	margin-left: 3em;
+}
+
+#settings p.or_separator {
+	margin: 0;
+	margin-left: 2em;
+	font-style: italic;
+}
+
+input[type='text'],
+input[type='number'] {
+	max-width: 75vw;
+}

@@ -25,6 +25,7 @@ impl Default for Settings {
 					FileFilter::Extension(String::from("tif")),
 					FileFilter::Extension(String::from("tiff")),
 				],
+				recursivity: Some(false),
 			}],
 			exclude_paths: vec![],
 			output_folders: vec![OutputFolder {
@@ -43,6 +44,7 @@ pub struct InputFolder {
 	pub path: PathBuf,
 	pub name: Option<String>,
 	pub filters: Vec<FileFilter>,
+	pub recursivity: Option<bool>,
 }
 impl InputFolder {
 	pub fn filter(&self, path: &std::path::Path) -> bool {
