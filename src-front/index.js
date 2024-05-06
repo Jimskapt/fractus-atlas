@@ -16,11 +16,15 @@ async function refresh() {
 
 		document.querySelector('#open-folder').setAttribute('disabled', 'disabled');
 		document.querySelector('#open-file').setAttribute('disabled', 'disabled');
+		document
+			.querySelector('#current-path')
+			.setAttribute('disabled', 'disabled');
 	} else {
 		position += 1;
 
 		document.querySelector('#open-folder').removeAttribute('disabled');
 		document.querySelector('#open-file').removeAttribute('disabled');
+		document.querySelector('#current-path').removeAttribute('disabled');
 	}
 
 	if (await invoke('current_can_be_restored')) {
@@ -56,12 +60,29 @@ async function refresh() {
 }
 
 async function change_path(event) {
-	let changed = await invoke('change_path', {
-		newPath: event.target.value,
-	});
+	var rename = false;
 
-	if (changed) {
-		refresh().await;
+	let current_path = await invoke('get_current_path');
+	let new_path = event.target.value;
+
+	if (current_path != new_path) {
+		if (await invoke('is_confirm_rename')) {
+			rename = confirm(
+				`Would you want to rename ?\n${current_path}\ninto\n${new_path}`
+			);
+		} else {
+			rename = true;
+		}
+
+		if (rename) {
+			let changed = await invoke('change_path', {
+				newPath: event.target.value,
+			});
+
+			if (changed) {
+				refresh().await;
+			}
+		}
 	}
 }
 
@@ -76,10 +97,12 @@ async function change_position(step) {
 }
 
 window.addEventListener('keyup', async function (event) {
-	let changed = await invoke('keyup', { key: event.key });
+	if (document.activeElement !== this.document.querySelector('#current-path')) {
+		let changed = await invoke('keyup', { key: event.key });
 
-	if (changed) {
-		refresh().await;
+		if (changed) {
+			refresh().await;
+		}
 	}
 });
 

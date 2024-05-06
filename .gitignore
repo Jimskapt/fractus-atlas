@@ -3,6 +3,7 @@
 /fractus-atlas
 /src-front/wasm/
 target/
+**.gitignore.*
 
 # Logs
 logs

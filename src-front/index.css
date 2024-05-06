@@ -110,6 +110,8 @@ body#index #position_counter {
 	height: 80vh;
 	z-index: 100;
 
+	text-align: left;
+
 	white-space: pre-wrap;
 }
 

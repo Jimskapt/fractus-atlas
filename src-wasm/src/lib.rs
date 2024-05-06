@@ -53,6 +53,74 @@ pub async fn build_settings_form() {
 		.unwrap()
 		.unwrap();
 
+	while let Some(child) = dyn_settings_form.first_child() {
+		dyn_settings_form.remove_child(&child).unwrap();
+	}
+
+	//////////////////////
+
+	{
+		let p = document.create_element("p").unwrap();
+
+		let backend_version: String =
+			serde_wasm_bindgen::from_value(invoke("get_backend_version", JsValue::NULL).await)
+				.unwrap();
+
+		p.set_inner_html(&format!(
+				"frontend version : {fe}<br>backend version : {backend_version}<br>settings version : {set}",
+				fe = env!("CARGO_PKG_VERSION"),
+				set = settings.settings_version.unwrap_or_else(|| { String::from("2.0.0") })
+			));
+
+		dyn_settings_form.append_child(&p).unwrap();
+	}
+
+	{
+		let label = document.create_element("label").unwrap();
+		label.set_attribute("class", "solo").unwrap();
+		label.set_attribute("for", "steps_after_move").unwrap();
+		label.set_inner_html("🦘 Steps after move");
+
+		dyn_settings_form.append_child(&label).unwrap();
+
+		let input = document.create_element("input").unwrap();
+		input.set_attribute("class", "solo").unwrap();
+		input.set_attribute("type", "number").unwrap();
+		input.set_attribute("id", "steps_after_move").unwrap();
+		input
+			.set_attribute("onchange", "set_modified(false)")
+			.unwrap();
+		input
+			.set_attribute("value", &format!("{}", settings.steps_after_move))
+			.unwrap();
+
+		dyn_settings_form.append_child(&input).unwrap();
+	}
+
+	{
+		let label = document.create_element("label").unwrap();
+		label.set_attribute("class", "solo").unwrap();
+
+		let input = document.create_element("input").unwrap();
+		input.set_attribute("type", "checkbox").unwrap();
+		input.set_attribute("id", "confirm_rename").unwrap();
+		input
+			.set_attribute("onchange", "set_modified(false)")
+			.unwrap();
+		if settings.confirm_rename.unwrap_or(true) {
+			input.set_attribute("checked", "checked").unwrap();
+		}
+
+		label.set_inner_html("&nbsp;confirm renaming in path field");
+		label
+			.insert_before(&input, label.first_child().as_ref())
+			.unwrap();
+
+		dyn_settings_form.append_child(&label).unwrap();
+	}
+
+	//////////////////////
+
 	{
 		let label = document.create_element("label").unwrap();
 		label.set_attribute("class", "solo").unwrap();
@@ -95,6 +163,8 @@ pub async fn build_settings_form() {
 		dyn_settings_form.append_child(&div).unwrap();
 	}
 
+	//////////////////////
+
 	{
 		let label = document.create_element("label").unwrap();
 		label.set_attribute("class", "solo").unwrap();
@@ -123,30 +193,6 @@ pub async fn build_settings_form() {
 
 		dyn_settings_form.append_child(&div).unwrap();
 	}
-
-	{
-		let label = document.create_element("label").unwrap();
-		label.set_attribute("class", "solo").unwrap();
-		label.set_attribute("for", "steps_after_move").unwrap();
-		label.set_inner_html("🦘 Steps after move");
-
-		dyn_settings_form.append_child(&label).unwrap();
-
-		let input = document.create_element("input").unwrap();
-		input.set_attribute("class", "solo").unwrap();
-		input.set_attribute("type", "number").unwrap();
-		input.set_attribute("id", "steps_after_move").unwrap();
-		input
-			.set_attribute("onchange", "set_modified(false)")
-			.unwrap();
-		input
-			.set_attribute("value", &format!("{}", settings.steps_after_move))
-			.unwrap();
-
-		dyn_settings_form.append_child(&input).unwrap();
-	}
-
-	// dyn_settings_form.append_child(&pre).unwrap();
 }
 
 #[derive(serde::Serialize)]
@@ -175,6 +221,13 @@ pub async fn save_settings() {
 
 	let (input_folders, input_messages) = input_controller::save();
 	let (output_folders, output_messages) = output_controller::save();
+	let confirm_rename = document
+		.query_selector("#confirm_rename")
+		.unwrap()
+		.unwrap()
+		.dyn_into::<web_sys::HtmlInputElement>()
+		.unwrap()
+		.checked();
 
 	//////////////////////
 
@@ -183,6 +236,7 @@ pub async fn save_settings() {
 	new_settings.steps_after_move = steps_after_move;
 	new_settings.input_folders = input_folders;
 	new_settings.output_folders = output_folders;
+	new_settings.confirm_rename = Some(confirm_rename);
 
 	//////////////////////
 
@@ -224,5 +278,6 @@ pub async fn save_settings() {
 
 	if is_ok {
 		set_unmodified();
+		build_settings_form().await;
 	}
 }

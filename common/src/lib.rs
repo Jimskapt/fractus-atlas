@@ -6,7 +6,9 @@ pub struct Settings {
 	exclude_paths: Vec<InputFolder>,
 	pub output_folders: Vec<OutputFolder>,
 	pub steps_after_move: isize,
-	sorting: SortingOrder,
+	pub sorting: SortingOrder,
+	pub confirm_rename: Option<bool>,
+	pub settings_version: Option<String>,
 }
 impl Default for Settings {
 	fn default() -> Self {
@@ -35,6 +37,8 @@ impl Default for Settings {
 			}],
 			steps_after_move: 1,
 			sorting: SortingOrder::FileName,
+			confirm_rename: Some(true),
+			settings_version: Some(String::from(env!("CARGO_PKG_VERSION"))),
 		}
 	}
 }
@@ -53,9 +57,8 @@ impl InputFolder {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
-enum SortingOrder {
+pub enum SortingOrder {
 	FileName,
-	Modified,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]

@@ -79,6 +79,20 @@ pub async fn run(init_settings: InitSettings) {
 								.unwrap();
 						});
 					}
+				} else if let notify::EventKind::Modify(notify::event::ModifyKind::Name(
+					notify::event::RenameMode::To,
+				)) = event.kind
+				{
+					if let Some(path) = event.paths.first() {
+						let sender_for_task = sender_for_watcher.clone();
+						let path_for_task = path.clone();
+						futures::executor::block_on(async {
+							sender_for_task
+								.send(FileEvent::Rename(path_for_task))
+								.await
+								.unwrap();
+						});
+					}
 				}
 			}
 			Err(_) => todo!(),
@@ -90,60 +104,26 @@ pub async fn run(init_settings: InitSettings) {
 	state.write().await.watcher = Some(watcher);
 
 	let state_for_file_channel = state.clone();
+	let sort = state.clone().read().await.settings.sorting.clone();
 	tokio::task::spawn(async move {
 		while let Some(event) = receiver.recv().await {
 			match event {
 				FileEvent::Add(add_path) => {
-					let input_folders = state_for_file_channel
+					println!("{}", add_path.display());
+					receive(state_for_file_channel.clone(), add_path).await
+				},
+				FileEvent::Rename(add_path) => {
+					receive(state_for_file_channel.clone(), add_path).await
+				}
+			}
+
+			match sort {
+				common::SortingOrder::FileName => {
+					state_for_file_channel
 						.write()
 						.await
-						.settings
-						.input_folders
-						.clone();
-					'inputs: for input_folder in input_folders {
-						if add_path.is_file()
-							&& input_folder.filter(&add_path)
-							&& add_path.starts_with(input_folder.path)
-						{
-							{
-								let images = &mut state_for_file_channel.write().await.images;
-
-								match images.last() {
-									Some(last) => {
-										if last.get_current() != add_path {
-											images.push(Image {
-												origin: add_path.clone(),
-												moved: None,
-											});
-										}
-									}
-									None => {
-										images.push(Image {
-											origin: add_path.clone(),
-											moved: None,
-										});
-									}
-								}
-							}
-
-							let none_position = state_for_file_channel
-								.read()
-								.await
-								.current_position
-								.is_none();
-							if none_position {
-								state_for_file_channel.write().await.set_position(Some(0));
-							}
-
-							APP_HANDLE
-								.get()
-								.unwrap()
-								.emit("request-ui-refresh", add_path)
-								.unwrap();
-
-							break 'inputs;
-						}
-					}
+						.images
+						.sort_by(|a, b| a.origin.cmp(&b.origin));
 				}
 			}
 		}
@@ -181,7 +161,9 @@ pub async fn run(init_settings: InitSettings) {
 			get_settings_path,
 			set_settings_path,
 			os_open,
-			update_files_list
+			update_files_list,
+			is_confirm_rename,
+			get_backend_version,
 		])
 		.manage(state.clone())
 		.manage(sender)
@@ -359,7 +341,10 @@ async fn set_settings(
 	state: tauri::State<'_, Arc<RwLock<AppState>>>,
 	new_settings: common::Settings,
 ) -> Result<Vec<common::SaveMessage>, ()> {
-	state.write().await.settings = new_settings.clone();
+	let mut modified_settings = new_settings.clone();
+	modified_settings.settings_version = Some(String::from(env!("CARGO_PKG_VERSION")));
+
+	state.write().await.settings = modified_settings.clone();
 
 	let mut messages = vec![];
 
@@ -378,7 +363,7 @@ async fn set_settings(
 
 		match std::fs::write(
 			&settings_path,
-			toml::to_string_pretty(&new_settings).unwrap(),
+			toml::to_string_pretty(&modified_settings).unwrap(),
 		) {
 			Ok(()) => {
 				messages.push(common::SaveMessage::Confirm(format!(
@@ -519,6 +504,14 @@ async fn os_open(
 	}
 
 	Ok(())
+}
+#[tauri::command]
+async fn is_confirm_rename(state: tauri::State<'_, Arc<RwLock<AppState>>>) -> Result<bool, ()> {
+	Ok(state.read().await.settings.confirm_rename.unwrap_or(true))
+}
+#[tauri::command]
+fn get_backend_version() -> String {
+	String::from(env!("CARGO_PKG_VERSION"))
 }
 
 #[async_recursion::async_recursion]
@@ -685,6 +678,48 @@ async fn get_image(
 		.unwrap()
 }
 
+async fn receive(state: Arc<RwLock<AppState>>, add_path: std::path::PathBuf) {
+	let input_folders = state.write().await.settings.input_folders.clone();
+	'inputs: for input_folder in input_folders {
+		if add_path.is_file()
+			&& input_folder.filter(&add_path)
+			&& add_path.starts_with(input_folder.path)
+		{
+			{
+				let images = &mut state.write().await.images;
+
+				if !images.iter().any(|el| {
+					if el.origin == add_path {
+						true
+					} else if let Some(moved) = &el.moved {
+						moved == &add_path
+					} else {
+						false
+					}
+				}) {
+					images.push(Image {
+						origin: add_path.clone(),
+						moved: None,
+					});
+				}
+			}
+
+			let none_position = state.read().await.current_position.is_none();
+			if none_position {
+				state.write().await.set_position(Some(0));
+			}
+
+			APP_HANDLE
+				.get()
+				.unwrap()
+				.emit("request-ui-refresh", add_path)
+				.unwrap();
+
+			break 'inputs;
+		}
+	}
+}
+
 pub enum InitSettings {
 	Standalone(common::Settings),
 	File(PathBuf),
@@ -693,6 +728,7 @@ pub enum InitSettings {
 #[derive(Debug)]
 enum FileEvent {
 	Add(std::path::PathBuf),
+	Rename(std::path::PathBuf),
 }
 
 pub struct AppState {
