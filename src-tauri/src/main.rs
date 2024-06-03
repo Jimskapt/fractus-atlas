@@ -10,7 +10,7 @@ async fn main() {
 
 	let settings_path = args
 		.next()
-		.unwrap_or_else(|| format!("{}.conf.toml", env!("CARGO_PKG_NAME")));
+		.unwrap_or_else(|| format!("{}.facf", env!("CARGO_PKG_NAME")));
 	let settings_pathbuf = std::path::PathBuf::from(settings_path);
 
 	let absolute_settings_path = if settings_pathbuf.is_absolute() {

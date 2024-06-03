@@ -66,7 +66,15 @@ pub async fn apply_action(
 					if let Some(output) = output_folder {
 						if let Some(image) = state.read().await.images.get(position) {
 							let old_path = image.get_current();
-							new_path = output.path.join::<String>(
+
+							let output_path = super::build_absolute_path(
+								&output.path,
+								rstate.settings_path.clone(),
+							);
+
+							std::fs::create_dir_all(&output_path).unwrap();
+
+							new_path = output_path.join::<String>(
 								image
 									.origin
 									.file_name()

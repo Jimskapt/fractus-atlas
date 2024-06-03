@@ -1,4 +1,5 @@
 **/*.conf.toml
+**/*.facf
 /output.log
 /fractus-atlas
 /src-front/wasm/

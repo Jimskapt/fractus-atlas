@@ -14,7 +14,7 @@ pub async fn run(init_settings: InitSettings) {
 			Ok(content) => match toml::from_str(&content) {
 				Ok(settings) => (Some(settings_path), settings),
 				Err(err) => {
-					eprintln!("{err}");
+					// eprintln!("{err}");
 					(None, common::Settings::default())
 				}
 			},
@@ -28,6 +28,55 @@ pub async fn run(init_settings: InitSettings) {
 		},
 		InitSettings::Standalone(settings) => (None, settings),
 	};
+
+	let global_log_path =
+		dirs::data_local_dir().map(|path| path.join(env!("CARGO_PKG_NAME")).join("global.log"));
+
+	let stdout = log4rs::append::console::ConsoleAppender::builder()
+		.target(log4rs::append::console::Target::Stdout)
+		.build();
+
+	let level_filter = log::LevelFilter::Trace;
+
+	let config = if let Some(global_log) = global_log_path {
+		let global_logger = log4rs::append::file::FileAppender::builder()
+			.encoder(Box::new(log4rs::encode::pattern::PatternEncoder::new(
+				"{d} - {m}{n}",
+			)))
+			.build(global_log)
+			.unwrap();
+
+		log4rs::config::Config::builder()
+			.appender(
+				log4rs::config::Appender::builder().build("globalfile", Box::new(global_logger)),
+			)
+			.appender(
+				log4rs::config::Appender::builder()
+					.filter(Box::new(log4rs::filter::threshold::ThresholdFilter::new(
+						level_filter,
+					)))
+					.build("stdout", Box::new(stdout)),
+			)
+			.build(
+				log4rs::config::Root::builder()
+					.appender("globalfile")
+					.appender("stdout")
+					.build(level_filter),
+			)
+			.unwrap()
+	} else {
+		log4rs::config::Config::builder()
+			.appender(log4rs::config::Appender::builder().build("stdout", Box::new(stdout)))
+			.logger(log4rs::config::Logger::builder().build("stdout", level_filter))
+			.build(
+				log4rs::config::Root::builder()
+					.appender("stdout")
+					.build(level_filter),
+			)
+			.unwrap()
+	};
+
+	let _handle = log4rs::init_config(config).unwrap();
 
 	let mut shortcuts = BTreeMap::new();
 	for (id, output) in settings.output_folders.iter().enumerate() {
@@ -52,7 +101,7 @@ pub async fn run(init_settings: InitSettings) {
 	// shortcuts.insert(String::from("backspace"), action::AppAction::RestoreImage);
 	shortcuts.insert(String::from(" "), action::AppAction::ChangeRandomPosition);
 
-	let (sender, mut receiver) = tokio::sync::mpsc::channel(100);
+	let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
 	let state = Arc::new(RwLock::new(AppState {
 		settings_path,
@@ -73,10 +122,7 @@ pub async fn run(init_settings: InitSettings) {
 						let sender_for_task = sender_for_watcher.clone();
 						let path_for_task = path.clone();
 						futures::executor::block_on(async {
-							sender_for_task
-								.send(FileEvent::Add(path_for_task))
-								.await
-								.unwrap();
+							sender_for_task.send(FileEvent::Add(path_for_task)).unwrap();
 						});
 					}
 				} else if let notify::EventKind::Modify(notify::event::ModifyKind::Name(
@@ -89,7 +135,6 @@ pub async fn run(init_settings: InitSettings) {
 						futures::executor::block_on(async {
 							sender_for_task
 								.send(FileEvent::Rename(path_for_task))
-								.await
 								.unwrap();
 						});
 					}
@@ -108,23 +153,19 @@ pub async fn run(init_settings: InitSettings) {
 	tokio::task::spawn(async move {
 		while let Some(event) = receiver.recv().await {
 			match event {
-				FileEvent::Add(add_path) => {
-					println!("{}", add_path.display());
-					receive(state_for_file_channel.clone(), add_path).await
-				},
+				FileEvent::Add(add_path) => receive(state_for_file_channel.clone(), add_path).await,
 				FileEvent::Rename(add_path) => {
 					receive(state_for_file_channel.clone(), add_path).await
 				}
-			}
-
-			match sort {
-				common::SortingOrder::FileName => {
-					state_for_file_channel
-						.write()
-						.await
-						.images
-						.sort_by(|a, b| a.origin.cmp(&b.origin));
-				}
+				FileEvent::DoSort => match sort {
+					common::SortingOrder::FileName => {
+						state_for_file_channel
+							.write()
+							.await
+							.images
+							.sort_by(|a, b| a.origin.cmp(&b.origin));
+					}
+				},
 			}
 		}
 	});
@@ -393,12 +434,24 @@ async fn get_settings_path(
 #[tauri::command]
 async fn update_files_list(
 	state: tauri::State<'_, Arc<RwLock<AppState>>>,
-	sender: tauri::State<'_, tokio::sync::mpsc::Sender<FileEvent>>,
+	sender: tauri::State<'_, tokio::sync::mpsc::UnboundedSender<FileEvent>>,
 ) -> Result<(), ()> {
 	let state_for_input = state.inner().clone();
 	let folders = state_for_input.read().await.settings.input_folders.clone();
+	let settings_path = state_for_input.read().await.settings_path.clone();
 
-	for input in &folders {
+	let absolute_folders: Vec<common::InputFolder> = folders
+		.iter()
+		.map(|folder| {
+			let mut clone = folder.clone();
+
+			clone.path = build_absolute_path(clone.path, settings_path.clone());
+
+			clone
+		})
+		.collect();
+
+	for input in &absolute_folders {
 		notify::Watcher::unwatch(
 			state_for_input.write().await.watcher.as_mut().unwrap(),
 			&input.path,
@@ -430,6 +483,8 @@ async fn update_files_list(
 				},
 			)
 			.unwrap();
+
+			sender_for_task.send(FileEvent::DoSort).unwrap();
 		});
 	}
 
@@ -517,16 +572,20 @@ fn get_backend_version() -> String {
 #[async_recursion::async_recursion]
 async fn browse_dir(
 	path: &std::path::Path,
-	sender: tokio::sync::mpsc::Sender<FileEvent>,
+	sender: tokio::sync::mpsc::UnboundedSender<FileEvent>,
 	recursivity: bool,
 ) {
 	let mut temp = tokio::fs::read_dir(&path).await.unwrap();
 	while let Ok(Some(entry)) = temp.next_entry().await {
 		if entry.path().is_file() {
+			log::debug!("send : {:?}", path.join(entry.file_name()));
+
 			sender
 				.send(FileEvent::Add(path.join(entry.file_name())))
-				.await
 				.unwrap();
+
+			// needed for big folders with a lot of files
+			tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 		} else if entry.path().is_dir() && recursivity {
 			browse_dir(&path.join(entry.file_name()), sender.clone(), recursivity).await;
 		}
@@ -678,12 +737,38 @@ async fn get_image(
 		.unwrap()
 }
 
+pub fn build_absolute_path(
+	input: impl Into<std::path::PathBuf>,
+	settings_path: Option<std::path::PathBuf>,
+) -> std::path::PathBuf {
+	let input_paths = input.into();
+
+	if input_paths.is_absolute() {
+		input_paths.clone()
+	} else if let Some(some_settings_path) = &settings_path {
+		some_settings_path.parent().unwrap().join(&input_paths)
+	} else if let Ok(current_dir) = std::env::current_dir() {
+		current_dir.join(&input_paths)
+	} else if let Some(exec) = std::env::args().next() {
+		std::path::PathBuf::from(exec)
+			.parent()
+			.unwrap()
+			.join(&input_paths)
+	} else {
+		panic!();
+	}
+}
+
 async fn receive(state: Arc<RwLock<AppState>>, add_path: std::path::PathBuf) {
+	let settings_path = state.read().await.settings_path.clone();
 	let input_folders = state.write().await.settings.input_folders.clone();
+
 	'inputs: for input_folder in input_folders {
+		let input_folder_path = build_absolute_path(&input_folder.path, settings_path.clone());
+
 		if add_path.is_file()
 			&& input_folder.filter(&add_path)
-			&& add_path.starts_with(input_folder.path)
+			&& add_path.starts_with(input_folder_path)
 		{
 			{
 				let images = &mut state.write().await.images;
@@ -697,6 +782,8 @@ async fn receive(state: Arc<RwLock<AppState>>, add_path: std::path::PathBuf) {
 						false
 					}
 				}) {
+					log::debug!("receive : {:?}", add_path);
+
 					images.push(Image {
 						origin: add_path.clone(),
 						moved: None,
@@ -729,6 +816,7 @@ pub enum InitSettings {
 enum FileEvent {
 	Add(std::path::PathBuf),
 	Rename(std::path::PathBuf),
+	DoSort,
 }
 
 pub struct AppState {
