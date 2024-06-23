@@ -51,8 +51,16 @@ pub struct InputFolder {
 	pub recursivity: Option<bool>,
 }
 impl InputFolder {
-	pub fn filter(&self, path: &std::path::Path) -> bool {
-		self.filters.iter().any(|filter| filter.filter(path))
+	pub fn filter(&self, path: &std::path::Path, settings_path: Option<PathBuf>) -> bool {
+		log::trace!("path = {path:?}");
+		log::trace!("filters = {:?}", self.filters);
+
+		let res = path.starts_with(crate::build_absolute_path(&self.path, settings_path))
+			&& self.filters.iter().any(|filter| filter.filter(path));
+
+		log::trace!("res = {res}");
+
+		res
 	}
 }
 
@@ -113,4 +121,26 @@ pub enum SaveMessage {
 	Error(String),
 	Warning(String),
 	Confirm(String),
+}
+
+pub fn build_absolute_path(
+	input: impl Into<std::path::PathBuf>,
+	settings_path: Option<std::path::PathBuf>,
+) -> std::path::PathBuf {
+	let input_paths = input.into();
+
+	if input_paths.is_absolute() {
+		input_paths.clone()
+	} else if let Some(some_settings_path) = &settings_path {
+		some_settings_path.parent().unwrap().join(&input_paths)
+	} else if let Ok(current_dir) = std::env::current_dir() {
+		current_dir.join(&input_paths)
+	} else if let Some(exec) = std::env::args().next() {
+		std::path::PathBuf::from(exec)
+			.parent()
+			.unwrap()
+			.join(&input_paths)
+	} else {
+		panic!();
+	}
 }

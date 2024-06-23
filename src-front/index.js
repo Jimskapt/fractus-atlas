@@ -107,7 +107,10 @@ window.addEventListener('keyup', async function (event) {
 });
 
 window.addEventListener('DOMContentLoaded', async function (event) {
-	refresh().await;
+	listen('request-ui-refresh', async function () {
+		console.log('request-ui-refresh event');
+		await refresh();
+	});
 
 	const move_bar = document.querySelector('#move-bar');
 
@@ -176,10 +179,5 @@ window.addEventListener('DOMContentLoaded', async function (event) {
 			await invoke('os_open', { openTarget: 'file' });
 		});
 
-	await invoke('update_files_list');
-	this.setTimeout(refresh, 500);
-
-	listen('request-ui-refresh', async function () {
-		await refresh();
-	});
+	invoke('update_files_list');
 });

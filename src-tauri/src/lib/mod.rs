@@ -101,71 +101,85 @@ pub async fn run(init_settings: InitSettings) {
 	// shortcuts.insert(String::from("backspace"), action::AppAction::RestoreImage);
 	shortcuts.insert(String::from(" "), action::AppAction::ChangeRandomPosition);
 
-	let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+	let mut state = AppState {
+		settings_path: Arc::new(RwLock::new(settings_path)),
+		settings: Arc::new(RwLock::new(settings)),
+		images: Arc::new(RwLock::new(Images::default())),
+		shortcuts: Arc::new(RwLock::new(shortcuts)),
+		watcher: Arc::new(RwLock::new(None)),
+		refresh: Arc::new(RwLock::new(false)),
+	};
 
-	let state = Arc::new(RwLock::new(AppState {
-		settings_path,
-		settings,
-		images: vec![],
-		current_position: None,
-		display_path: String::from("Loading files list"),
-		shortcuts,
-		watcher: None,
-	}));
+	let input_folders_for_watcher = state.settings.read().await.input_folders.clone();
+	let settings_path_for_watcher = state.settings_path.read().await.clone();
+	let images_for_watcher = state.images.clone();
+	let refresh_for_watcher = state.refresh.clone();
+	let watcher: notify::ReadDirectoryChangesWatcher =
+		<notify::RecommendedWatcher as notify::Watcher>::new(
+			move |res: Result<notify::Event, notify::Error>| {
+				log::debug!("new watcher event : {res:?}");
 
-	let sender_for_watcher = sender.clone();
-	let watcher = <notify::RecommendedWatcher as notify::Watcher>::new(
-		move |res: Result<notify::Event, notify::Error>| match res {
-			Ok(event) => {
-				if let notify::EventKind::Create(_) = event.kind {
-					if let Some(path) = event.paths.first() {
-						let sender_for_task = sender_for_watcher.clone();
-						let path_for_task = path.clone();
-						futures::executor::block_on(async {
-							sender_for_task.send(FileEvent::Add(path_for_task)).unwrap();
-						});
+				match res {
+					Ok(event) => {
+						if let notify::EventKind::Create(_) = event.kind {
+							if let Some(path) = event.paths.first() {
+								let path_for_task = path.clone();
+								if input_folders_for_watcher.iter().any(|folder| {
+									folder.filter(path, settings_path_for_watcher.clone())
+								}) {
+									futures::executor::block_on(async {
+										log::trace!("trying write PLZ-965");
+										images_for_watcher.write().await.push(
+											path_for_task,
+											&mut *refresh_for_watcher.write().await,
+										);
+										log::trace!("finished write PLZ-965");
+									});
+								}
+							}
+						} else if let notify::EventKind::Modify(notify::event::ModifyKind::Name(
+							notify::event::RenameMode::To,
+						)) = event.kind
+						{
+							if let Some(path) = event.paths.first() {
+								let path_for_task = path.clone();
+								if input_folders_for_watcher.iter().any(|folder| {
+									folder.filter(path, settings_path_for_watcher.clone())
+								}) {
+									futures::executor::block_on(async {
+										log::trace!("trying write TGS-951");
+										images_for_watcher.write().await.push(
+											path_for_task,
+											&mut *refresh_for_watcher.write().await,
+										);
+										log::trace!("finished write TGS-951");
+									});
+								}
+							}
+						}
 					}
-				} else if let notify::EventKind::Modify(notify::event::ModifyKind::Name(
-					notify::event::RenameMode::To,
-				)) = event.kind
-				{
-					if let Some(path) = event.paths.first() {
-						let sender_for_task = sender_for_watcher.clone();
-						let path_for_task = path.clone();
-						futures::executor::block_on(async {
-							sender_for_task
-								.send(FileEvent::Rename(path_for_task))
-								.unwrap();
-						});
-					}
+					Err(_) => todo!(),
 				}
-			}
-			Err(_) => todo!(),
-		},
-		notify::Config::default(),
-	)
-	.unwrap();
+			},
+			notify::Config::default(),
+		)
+		.unwrap();
 
-	state.write().await.watcher = Some(watcher);
+	state.watcher = Arc::new(RwLock::new(Some(watcher)));
 
-	let state_for_file_channel = state.clone();
-	let sort = state.clone().read().await.settings.sorting.clone();
+	let refresh_for_task = state.refresh.clone();
 	tokio::task::spawn(async move {
-		while let Some(event) = receiver.recv().await {
-			match event {
-				FileEvent::Add(add_path) => receive(state_for_file_channel.clone(), add_path).await,
-				FileEvent::Rename(add_path) => {
-					receive(state_for_file_channel.clone(), add_path).await
-				}
-				FileEvent::DoSort => match sort {
-					common::SortingOrder::FileName => {
-						state_for_file_channel
-							.write()
-							.await
-							.images
-							.sort_by(|a, b| a.origin.cmp(&b.origin));
-					}
-				},
+		loop {
+			let refresh = *refresh_for_task.read().await;
+			if refresh {
+				APP_HANDLE
+					.get()
+					.unwrap()
+					.emit("request-ui-refresh", ())
+					.unwrap();
+
+				*refresh_for_task.write().await = false;
+				tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 			}
 		}
 	});
@@ -175,11 +189,9 @@ pub async fn run(init_settings: InitSettings) {
 		.setup(|app| {
 			let handle = app.app_handle().clone();
 
-			/*
 			app.listen_any("request-ui-refresh", |event| {
-				println!("got request-ui-refresh with payload {:?}", event.payload());
+				log::debug!("got request-ui-refresh with payload {:?}", event.payload());
 			});
-			*/
 
 			_ = APP_HANDLE.set(handle);
 
@@ -206,8 +218,7 @@ pub async fn run(init_settings: InitSettings) {
 			is_confirm_rename,
 			get_backend_version,
 		])
-		.manage(state.clone())
-		.manage(sender)
+		.manage(state)
 		.register_asynchronous_uri_scheme_protocol("image", |app, request, responder| {
 			let app_for_async = app.clone();
 			tauri::async_runtime::spawn(async move {
@@ -220,90 +231,94 @@ pub async fn run(init_settings: InitSettings) {
 }
 
 #[tauri::command]
-async fn keyup(state: tauri::State<'_, Arc<RwLock<AppState>>>, key: String) -> Result<bool, ()> {
+async fn keyup(state: tauri::State<'_, AppState>, key: String) -> Result<bool, ()> {
 	let mut changed = Ok(false);
 
 	let processed = key.to_lowercase();
-	let shortcuts = state.read().await.shortcuts.clone();
 
-	if let Some(action) = shortcuts.get(&processed) {
-		changed = action::apply_action(state.inner().clone(), action).await
+	if let Some(action) = state.shortcuts.read().await.get(&processed) {
+		changed = action::apply_action(state.inner(), action).await;
 	}
 
 	changed
 }
 #[tauri::command]
-async fn get_current_path(state: tauri::State<'_, Arc<RwLock<AppState>>>) -> Result<String, ()> {
-	Ok(state.read().await.display_path.clone())
+async fn get_current_path(state: tauri::State<'_, AppState>) -> Result<String, ()> {
+	Ok(state.images.read().await.display_path())
 }
 #[tauri::command]
 async fn get_move_actions(
-	state: tauri::State<'_, Arc<RwLock<AppState>>>,
+	state: tauri::State<'_, AppState>,
 ) -> Result<Vec<common::OutputFolder>, ()> {
-	Ok(state.read().await.settings.output_folders.clone())
+	Ok(state.settings.read().await.output_folders.clone())
 }
 #[tauri::command]
-async fn do_move(state: tauri::State<'_, Arc<RwLock<AppState>>>, name: String) -> Result<bool, ()> {
-	if !name.trim().is_empty() {
+async fn do_move(state: tauri::State<'_, AppState>, name: String) -> Result<bool, ()> {
+	let res = if !name.trim().is_empty() {
 		let position = state
+			.settings
 			.read()
 			.await
-			.settings
 			.output_folders
 			.iter()
 			.position(|el| el.name == name);
 		if let Some(id) = position {
-			action::apply_action(state.inner().clone(), &action::AppAction::Move(id)).await
+			action::apply_action(state.inner(), &action::AppAction::Move(id)).await
 		} else {
 			// TODO : warn user
 			Ok(false)
 		}
 	} else {
-		action::apply_action(state.inner().clone(), &action::AppAction::RestoreImage).await
-	}
+		action::apply_action(state.inner(), &action::AppAction::RestoreImage).await
+	};
+
+	log::trace!("res = {res:?}");
+
+	res
 }
 #[tauri::command]
-async fn change_path(
-	state: tauri::State<'_, Arc<RwLock<AppState>>>,
-	new_path: String,
-) -> Result<bool, ()> {
+async fn change_path(state: tauri::State<'_, AppState>, new_path: String) -> Result<bool, ()> {
 	let mut moved = false;
 
 	let new_pathbuf = std::path::PathBuf::from(new_path);
 
-	let current_position = state.read().await.current_position;
-	if let Some(position) = current_position {
-		if let Some(current_image) = state.read().await.images.get(position) {
-			let old_path = current_image.get_current();
+	if let Some(current_image) = state.images.read().await.get_current() {
+		let old_path = current_image.get_current();
 
-			if old_path.parent().unwrap() == new_pathbuf.parent().unwrap()
-				&& old_path.extension() == new_pathbuf.extension()
-			{
-				match exec_move(&old_path, &new_pathbuf) {
-					Ok(_) => {
-						moved = true;
-					}
-					Err(_) => todo!(),
+		if old_path.parent().unwrap() == new_pathbuf.parent().unwrap()
+			&& old_path.extension() == new_pathbuf.extension()
+		{
+			match exec_move(&old_path, &new_pathbuf) {
+				Ok(_) => {
+					moved = true;
 				}
-			} else {
-				eprintln!("the new specified path has not same parent or file extension than the old path, this is not allowed because of security issue"); // TODO
-				return Ok(true);
+				Err(_) => todo!(),
 			}
+		} else {
+			eprintln!("the new specified path has not same parent or file extension than the old path, this is not allowed because of security issue"); // TODO
+			return Ok(true);
 		}
 	}
 
 	if moved {
-		let steps_after_move = {
-			let mut state_w = state.write().await;
-			let pos = state_w.current_position.unwrap();
-			state_w.images.get_mut(pos).unwrap().moved = Some(new_pathbuf);
-			state_w.set_position(current_position);
+		{
+			log::trace!("trying write NFB-974");
+			if let Err(err) = state
+				.images
+				.write()
+				.await
+				.move_current(new_pathbuf, &mut *state.refresh.write().await)
+			{
+				log::error!("error while save new current path : {err}");
+			}
+			log::trace!("finished write NFB-974");
+		}
+		// TODO : usefull ? state.set_position(current_position);
 
-			state_w.settings.steps_after_move
-		};
+		let steps_after_move = state.settings.read().await.steps_after_move;
 
 		return action::apply_action(
-			state.inner().clone(),
+			state.inner(),
 			&action::AppAction::ChangePosition(steps_after_move),
 		)
 		.await;
@@ -312,54 +327,55 @@ async fn change_path(
 	}
 }
 #[tauri::command]
-async fn change_position(
-	state: tauri::State<'_, Arc<RwLock<AppState>>>,
-	step: isize,
-) -> Result<bool, ()> {
-	return action::apply_action(
-		state.inner().clone(),
-		&action::AppAction::ChangePosition(step),
-	)
-	.await;
+async fn change_position(state: tauri::State<'_, AppState>, step: isize) -> Result<bool, ()> {
+	return action::apply_action(state.inner(), &action::AppAction::ChangePosition(step)).await;
 }
 #[tauri::command]
-async fn set_random_position(state: tauri::State<'_, Arc<RwLock<AppState>>>) -> Result<bool, ()> {
-	return action::apply_action(
-		state.inner().clone(),
-		&action::AppAction::ChangeRandomPosition,
-	)
-	.await;
+async fn set_random_position(state: tauri::State<'_, AppState>) -> Result<bool, ()> {
+	return action::apply_action(state.inner(), &action::AppAction::ChangeRandomPosition).await;
 }
 #[tauri::command]
-async fn get_settings(
-	state: tauri::State<'_, Arc<RwLock<AppState>>>,
-) -> Result<common::Settings, ()> {
-	Ok(state.read().await.settings.clone())
+async fn get_settings(state: tauri::State<'_, AppState>) -> Result<common::Settings, ()> {
+	Ok(state.settings.read().await.clone())
 }
 #[tauri::command]
 async fn set_settings_path(
-	state: tauri::State<'_, Arc<RwLock<AppState>>>,
+	state: tauri::State<'_, AppState>,
 	settings_path: String,
 ) -> Result<Vec<common::SaveMessage>, ()> {
 	let mut messages = vec![];
 
 	if !settings_path.trim().is_empty() {
 		if !std::path::PathBuf::from(&settings_path).exists() {
-			state.write().await.settings_path = Some(std::path::PathBuf::from(settings_path));
+			log::trace!("trying write MGF-856");
+			*state.settings_path.write().await = Some(std::path::PathBuf::from(settings_path));
+			log::trace!("finished write MGF-856");
 		} else {
 			match std::fs::read_to_string(&settings_path) {
 				Ok(value) => match toml::from_str(&value) {
 					Ok(new_settings) => {
-						let mut data = state.write().await;
-						data.settings_path = Some(std::path::PathBuf::from(settings_path));
-						data.settings = new_settings;
+						{
+							log::trace!("trying write PLT-884");
+							*state.settings_path.write().await =
+								Some(std::path::PathBuf::from(settings_path));
+							log::trace!("finished write PLT-884");
+						}
+						{
+							log::trace!("trying write JDB-637");
+							*state.settings.write().await = new_settings;
+							log::trace!("finished write JDB-637");
+						}
 					}
 					Err(err) => {
 						messages.push(common::SaveMessage::Warning(format!(
 							"can not read `{}` file because : {}",
 							settings_path, err
 						)));
-						state.write().await.settings_path = None;
+						{
+							log::trace!("trying write RNY-678");
+							*state.settings_path.write().await = None;
+							log::trace!("finished write RNY-678");
+						}
 					}
 				},
 				Err(err) => {
@@ -367,29 +383,39 @@ async fn set_settings_path(
 						"can not read `{}` file because : {}",
 						settings_path, err
 					)));
-					state.write().await.settings_path = None;
+					{
+						log::trace!("trying write CFN-314");
+						*state.settings_path.write().await = None;
+						log::trace!("finished write CFN-314");
+					}
 				}
 			}
 		}
 	} else {
-		state.write().await.settings_path = None;
+		log::trace!("trying write MFB-554");
+		*state.settings_path.write().await = None;
+		log::trace!("finished write MFB-554");
 	}
 
 	Ok(messages)
 }
 #[tauri::command]
 async fn set_settings(
-	state: tauri::State<'_, Arc<RwLock<AppState>>>,
+	state: tauri::State<'_, AppState>,
 	new_settings: common::Settings,
 ) -> Result<Vec<common::SaveMessage>, ()> {
 	let mut modified_settings = new_settings.clone();
 	modified_settings.settings_version = Some(String::from(env!("CARGO_PKG_VERSION")));
 
-	state.write().await.settings = modified_settings.clone();
+	{
+		log::trace!("trying write DJG-142");
+		*state.settings.write().await = modified_settings.clone();
+		log::trace!("finished write DJG-142");
+	}
 
 	let mut messages = vec![];
 
-	let maybe_settings_path = state.read().await.settings_path.clone();
+	let maybe_settings_path = state.settings_path.read().await.clone();
 
 	if let Some(settings_path) = maybe_settings_path {
 		if !settings_path.exists() {
@@ -418,7 +444,11 @@ async fn set_settings(
 					settings_path.display(),
 					err
 				)));
-				state.write().await.settings_path = None;
+				{
+					log::trace!("trying write ZHC-645");
+					*state.settings_path.write().await = None;
+					log::trace!("finished write ZHC-645");
+				}
 			}
 		}
 	}
@@ -427,94 +457,97 @@ async fn set_settings(
 }
 #[tauri::command]
 async fn get_settings_path(
-	state: tauri::State<'_, Arc<RwLock<AppState>>>,
+	state: tauri::State<'_, AppState>,
 ) -> Result<Option<std::path::PathBuf>, ()> {
-	Ok(state.read().await.settings_path.clone())
+	Ok(state.settings_path.read().await.clone())
 }
 #[tauri::command]
-async fn update_files_list(
-	state: tauri::State<'_, Arc<RwLock<AppState>>>,
-	sender: tauri::State<'_, tokio::sync::mpsc::UnboundedSender<FileEvent>>,
-) -> Result<(), ()> {
-	let state_for_input = state.inner().clone();
-	let folders = state_for_input.read().await.settings.input_folders.clone();
-	let settings_path = state_for_input.read().await.settings_path.clone();
+async fn update_files_list(state: tauri::State<'_, AppState>) -> Result<(), ()> {
+	let folders = &state.inner().settings.read().await.input_folders;
+	let settings_path = state.inner().settings_path.read().await;
 
 	let absolute_folders: Vec<common::InputFolder> = folders
 		.iter()
 		.map(|folder| {
 			let mut clone = folder.clone();
 
-			clone.path = build_absolute_path(clone.path, settings_path.clone());
+			clone.path = common::build_absolute_path(clone.path, settings_path.clone());
 
 			clone
 		})
 		.collect();
 
 	for input in &absolute_folders {
+		log::trace!("trying write HSO-497");
 		notify::Watcher::unwatch(
-			state_for_input.write().await.watcher.as_mut().unwrap(),
+			state.inner().watcher.write().await.as_mut().unwrap(),
 			&input.path,
 		)
 		.ok();
+		log::trace!("finished write HSO-497");
 	}
 
-	state_for_input.write().await.images.clear();
-	state_for_input.write().await.set_position(None);
+	{
+		log::trace!("trying write LEV-871");
+		(*state.inner().images.write().await).clear(&mut *state.refresh.write().await);
+		log::trace!("finished write LEV-871");
+	}
+	{
+		log::trace!("trying write YRB-446");
+		state
+			.inner()
+			.images
+			.write()
+			.await
+			.set_position(None, &mut *state.refresh.write().await);
+		log::trace!("finished write YRB-446");
+	}
 
 	for input in folders {
-		let state_for_task = state_for_input.clone();
-		let sender_for_task = (*sender).clone();
-		tokio::task::spawn(async move {
-			browse_dir(
-				&input.path,
-				sender_for_task.clone(),
-				input.recursivity.unwrap_or(false),
-			)
-			.await;
+		log::trace!("started browsing {:?}", input.path);
 
-			notify::Watcher::watch(
-				state_for_task.write().await.watcher.as_mut().unwrap(),
-				&input.path,
-				if input.recursivity.unwrap_or(false) {
-					notify::RecursiveMode::Recursive
-				} else {
-					notify::RecursiveMode::NonRecursive
-				},
-			)
-			.unwrap();
+		browse_dir(
+			state.inner(),
+			&input.path,
+			input.recursivity.unwrap_or(false),
+		)
+		.await;
 
-			sender_for_task.send(FileEvent::DoSort).unwrap();
-		});
+		log::trace!("finished browsing {:?}", input.path);
+
+		log::trace!("trying write TJK-766");
+		notify::Watcher::watch(
+			state.inner().watcher.write().await.as_mut().unwrap(),
+			&input.path,
+			if input.recursivity.unwrap_or(false) {
+				notify::RecursiveMode::Recursive
+			} else {
+				notify::RecursiveMode::NonRecursive
+			},
+		)
+		.unwrap();
+		log::trace!("finished write TJK-766");
 	}
 
 	Ok(())
 }
 #[tauri::command]
-async fn get_current_position(
-	state: tauri::State<'_, Arc<RwLock<AppState>>>,
-) -> Result<Option<usize>, ()> {
-	Ok(state.read().await.current_position)
+async fn get_current_position(state: tauri::State<'_, AppState>) -> Result<Option<usize>, ()> {
+	Ok(state.images.read().await.get_current_pos())
 }
 #[tauri::command]
-async fn get_images_length(state: tauri::State<'_, Arc<RwLock<AppState>>>) -> Result<usize, ()> {
-	Ok(state.read().await.images.len())
+async fn get_images_length(state: tauri::State<'_, AppState>) -> Result<usize, ()> {
+	Ok(state.images.read().await.len())
 }
 #[tauri::command]
-async fn get_ai_prompt(
-	state: tauri::State<'_, Arc<RwLock<AppState>>>,
-) -> Result<Option<String>, ()> {
-	let current_position = state.read().await.current_position;
+async fn get_ai_prompt(state: tauri::State<'_, AppState>) -> Result<Option<String>, ()> {
+	if let Some(image) = state.images.read().await.get_current() {
+		let path = image.get_current();
 
-	if let Some(position) = current_position {
-		if let Some(image) = state.read().await.images.get(position) {
-			let path = image.get_current();
-
-			if let Some(extension) = path.extension() {
-				if extension.to_string_lossy().trim().to_lowercase() == "png" {
-					if let Ok(bytes) = std::fs::read(&path) {
-						return Ok(extract_prompt(&bytes));
-					}
+		if let Some(extension) = path.extension() {
+			if extension.to_string_lossy().trim().to_lowercase() == "png" {
+				if let Ok(bytes) = std::fs::read(&path) {
+					return Ok(extract_prompt(&bytes));
 				}
 			}
 		}
@@ -523,46 +556,36 @@ async fn get_ai_prompt(
 	return Ok(None);
 }
 #[tauri::command]
-async fn current_can_be_restored(
-	state: tauri::State<'_, Arc<RwLock<AppState>>>,
-) -> Result<bool, ()> {
-	match state.read().await.current_position {
-		Some(position) => Ok(state
-			.read()
-			.await
-			.images
-			.get(position)
-			.unwrap()
-			.moved
-			.is_some()),
+async fn current_can_be_restored(state: tauri::State<'_, AppState>) -> Result<bool, ()> {
+	match state.images.read().await.get_current() {
+		Some(image) => Ok(image.moved.is_some()),
 		None => Ok(false),
 	}
 }
 #[tauri::command]
-async fn os_open(
-	state: tauri::State<'_, Arc<RwLock<AppState>>>,
-	open_target: String,
-) -> Result<(), ()> {
-	if let Some(position) = state.read().await.current_position {
-		let target_path = state
-			.read()
-			.await
-			.images
-			.get(position)
-			.unwrap()
-			.get_current();
-		if open_target == "file" {
-			open::that(target_path).unwrap();
+async fn os_open(state: tauri::State<'_, AppState>, open_target: String) -> Result<(), ()> {
+	if let Some(path) = state
+		.images
+		.read()
+		.await
+		.get_current()
+		.map(|image| image.get_current())
+	{
+		let target_path = if open_target == "file" {
+			path
 		} else {
-			open::that(target_path.parent().unwrap()).unwrap();
-		}
+			path.parent().unwrap().to_path_buf()
+		};
+
+		log::debug!("trying to open {target_path:?}");
+		open::that_detached(target_path).unwrap();
 	}
 
 	Ok(())
 }
 #[tauri::command]
-async fn is_confirm_rename(state: tauri::State<'_, Arc<RwLock<AppState>>>) -> Result<bool, ()> {
-	Ok(state.read().await.settings.confirm_rename.unwrap_or(true))
+async fn is_confirm_rename(state: tauri::State<'_, AppState>) -> Result<bool, ()> {
+	Ok(state.settings.read().await.confirm_rename.unwrap_or(true))
 }
 #[tauri::command]
 fn get_backend_version() -> String {
@@ -570,24 +593,39 @@ fn get_backend_version() -> String {
 }
 
 #[async_recursion::async_recursion]
-async fn browse_dir(
-	path: &std::path::Path,
-	sender: tokio::sync::mpsc::UnboundedSender<FileEvent>,
-	recursivity: bool,
-) {
-	let mut temp = tokio::fs::read_dir(&path).await.unwrap();
+async fn browse_dir(state: &AppState, path: &std::path::Path, recursivity: bool) {
+	let input_folders = state.settings.read().await.input_folders.clone();
+	let settings_path = state.settings_path.read().await.clone();
+
+	let absolute_path = common::build_absolute_path(path, settings_path.clone());
+
+	let mut temp = tokio::fs::read_dir(&absolute_path).await.unwrap();
+	let settings_path_for_loop = settings_path.clone();
 	while let Ok(Some(entry)) = temp.next_entry().await {
+		let merged_path = absolute_path.join(entry.file_name());
+
 		if entry.path().is_file() {
-			log::debug!("send : {:?}", path.join(entry.file_name()));
+			let settings_path_for_filters = settings_path_for_loop.clone();
+			if input_folders
+				.iter()
+				.any(|folder| folder.filter(&merged_path, settings_path_for_filters.clone()))
+			{
+				log::debug!("add : {:?}", merged_path);
 
-			sender
-				.send(FileEvent::Add(path.join(entry.file_name())))
-				.unwrap();
-
-			// needed for big folders with a lot of files
-			tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+				{
+					log::trace!("trying write OGR-227");
+					state
+						.images
+						.write()
+						.await
+						.push(merged_path, &mut *state.refresh.write().await);
+					log::trace!("finished write OGR-227");
+				}
+			} else {
+				log::debug!("do not match input_folders : {:?}", merged_path);
+			}
 		} else if entry.path().is_dir() && recursivity {
-			browse_dir(&path.join(entry.file_name()), sender.clone(), recursivity).await;
+			browse_dir(state, &merged_path, recursivity).await;
 		}
 	}
 }
@@ -705,8 +743,8 @@ async fn get_image(
 	app: &tauri::AppHandle,
 	_request: tauri::http::Request<Vec<u8>>,
 ) -> tauri::http::Response<Vec<u8>> {
-	let app_state: tauri::State<Arc<RwLock<AppState>>> = app.state();
-	let app_state_read = app_state.inner().read().await;
+	let app_state: tauri::State<AppState> = app.state();
+	let images = app_state.images.read().await;
 
 	tauri::http::Response::builder()
 		/*
@@ -715,96 +753,21 @@ async fn get_image(
 		.header("Access-Control-Allow-Methods", "GET, OPTIONS")
 		.header("Access-Control-Allow-Headers", "Content-Type")
 		*/
-		.body(match &app_state_read.current_position {
-			Some(position) => match app_state_read.images.get(*position) {
-				Some(image) => {
-					let bytes = std::fs::read(image.get_current());
-					match bytes {
-						Ok(content) => content.to_vec(),
-						Err(_) => include_bytes!(
-							"../../../src-front/assets/undraw_access_denied_re_awnf.png"
-						)
-						.to_vec(),
+		.body(match images.get_current() {
+			Some(image) => {
+				let bytes = std::fs::read(image.get_current());
+				match bytes {
+					Ok(content) => content.to_vec(),
+					Err(_) => {
+						include_bytes!("../../../src-front/assets/undraw_access_denied_re_awnf.png")
+							.to_vec()
 					}
 				}
-				None => {
-					include_bytes!("../../../src-front/assets/undraw_Page_not_found_re_e9o6.png")
-						.to_vec()
-				}
-			},
-			None => include_bytes!("../../../src-front/assets/undraw_Loading_re_5axr.png").to_vec(),
+			}
+			None => include_bytes!("../../../src-front/assets/undraw_Page_not_found_re_e9o6.png")
+				.to_vec(),
 		})
 		.unwrap()
-}
-
-pub fn build_absolute_path(
-	input: impl Into<std::path::PathBuf>,
-	settings_path: Option<std::path::PathBuf>,
-) -> std::path::PathBuf {
-	let input_paths = input.into();
-
-	if input_paths.is_absolute() {
-		input_paths.clone()
-	} else if let Some(some_settings_path) = &settings_path {
-		some_settings_path.parent().unwrap().join(&input_paths)
-	} else if let Ok(current_dir) = std::env::current_dir() {
-		current_dir.join(&input_paths)
-	} else if let Some(exec) = std::env::args().next() {
-		std::path::PathBuf::from(exec)
-			.parent()
-			.unwrap()
-			.join(&input_paths)
-	} else {
-		panic!();
-	}
-}
-
-async fn receive(state: Arc<RwLock<AppState>>, add_path: std::path::PathBuf) {
-	let settings_path = state.read().await.settings_path.clone();
-	let input_folders = state.write().await.settings.input_folders.clone();
-
-	'inputs: for input_folder in input_folders {
-		let input_folder_path = build_absolute_path(&input_folder.path, settings_path.clone());
-
-		if add_path.is_file()
-			&& input_folder.filter(&add_path)
-			&& add_path.starts_with(input_folder_path)
-		{
-			{
-				let images = &mut state.write().await.images;
-
-				if !images.iter().any(|el| {
-					if el.origin == add_path {
-						true
-					} else if let Some(moved) = &el.moved {
-						moved == &add_path
-					} else {
-						false
-					}
-				}) {
-					log::debug!("receive : {:?}", add_path);
-
-					images.push(Image {
-						origin: add_path.clone(),
-						moved: None,
-					});
-				}
-			}
-
-			let none_position = state.read().await.current_position.is_none();
-			if none_position {
-				state.write().await.set_position(Some(0));
-			}
-
-			APP_HANDLE
-				.get()
-				.unwrap()
-				.emit("request-ui-refresh", add_path)
-				.unwrap();
-
-			break 'inputs;
-		}
-	}
 }
 
 pub enum InitSettings {
@@ -812,41 +775,13 @@ pub enum InitSettings {
 	File(PathBuf),
 }
 
-#[derive(Debug)]
-enum FileEvent {
-	Add(std::path::PathBuf),
-	Rename(std::path::PathBuf),
-	DoSort,
-}
-
 pub struct AppState {
-	settings_path: Option<PathBuf>,
-	settings: common::Settings,
-	images: Vec<Image>,
-	current_position: Option<usize>,
-	display_path: String,
-	shortcuts: BTreeMap<String, action::AppAction>,
-	watcher: Option<notify::RecommendedWatcher>,
-}
-impl AppState {
-	pub fn set_position(&mut self, new_position: Option<usize>) {
-		self.current_position = new_position;
-
-		match new_position {
-			Some(new_position_usize) => {
-				if let Some(image) = self.images.get(new_position_usize) {
-					self.display_path = format!("{}", image.get_current().display());
-				} else {
-					self.display_path = String::from("error : unknown position");
-				}
-			}
-			None => {
-				self.display_path = String::from(
-					"No image, to the moment. Probably because target folders are empty.",
-				);
-			}
-		}
-	}
+	settings_path: Arc<RwLock<Option<PathBuf>>>,
+	settings: Arc<RwLock<common::Settings>>,
+	images: Arc<RwLock<Images>>,
+	shortcuts: Arc<RwLock<BTreeMap<String, action::AppAction>>>,
+	watcher: Arc<RwLock<Option<notify::RecommendedWatcher>>>,
+	refresh: Arc<RwLock<bool>>,
 }
 
 #[derive(Debug, Clone)]
@@ -861,5 +796,126 @@ impl Image {
 		} else {
 			self.origin.clone()
 		}
+	}
+}
+
+#[derive(Debug, Default)]
+struct Images {
+	data: Vec<Image>,
+	position: Option<usize>,
+}
+
+impl Images {
+	pub fn push(&mut self, new: impl Into<PathBuf>, state_refresh: &mut bool) -> Option<PathBuf> {
+		let new_path = new.into();
+
+		if !self
+			.data
+			.iter()
+			.any(|image| image.origin == new_path || image.moved == Some(new_path.clone()))
+		{
+			self.data.push(Image {
+				origin: new_path,
+				moved: None,
+			});
+
+			if self.position.is_none() {
+				self.set_position(Some(0), state_refresh);
+			}
+
+			*state_refresh = true;
+
+			None
+		} else {
+			Some(new_path)
+		}
+	}
+
+	pub fn set_position(&mut self, new_position: Option<usize>, state_refresh: &mut bool) {
+		self.position = new_position;
+
+		*state_refresh = true;
+	}
+
+	pub fn clear(&mut self, state_refresh: &mut bool) {
+		self.data.clear();
+		self.position = None;
+
+		*state_refresh = true;
+	}
+
+	pub fn move_current(
+		&mut self,
+		requested_path: impl Into<PathBuf>,
+		state_refresh: &mut bool,
+	) -> Result<(), String> {
+		if let Some(current) = self.get_current() {
+			let new_path = requested_path.into();
+			let move_res = exec_move(&current.get_current(), &new_path);
+
+			if move_res.is_ok() {
+				let pos = self.get_current_pos().unwrap();
+				self.data.get_mut(pos).unwrap().moved = Some(new_path);
+
+				*state_refresh = true;
+
+				Ok(())
+			} else {
+				move_res.map(|_| ())
+			}
+		} else {
+			Err(String::from("no current yet"))
+		}
+	}
+
+	pub fn restore_current(&mut self, state_refresh: &mut bool) -> Result<(), String> {
+		if let Some(current) = self.get_current() {
+			let current_path = current.get_current();
+			let origin_path = current.origin.clone();
+
+			let move_res = exec_move(&current_path, &origin_path);
+			if move_res.is_ok() {
+				let pos = self.get_current_pos().unwrap();
+				self.data.get_mut(pos).unwrap().moved = None;
+
+				*state_refresh = true;
+
+				Ok(())
+			} else {
+				move_res.map(|_| ())
+			}
+		} else {
+			Err(String::from("no current, yet"))
+		}
+	}
+}
+
+impl Images {
+	pub fn get_pos(&self, pos: usize) -> Option<&Image> {
+		self.data.get(pos)
+	}
+
+	pub fn get_current(&self) -> Option<&Image> {
+		match self.position {
+			Some(pos) => self.get_pos(pos),
+			None => None,
+		}
+	}
+
+	pub fn display_path(&self) -> String {
+		match self.get_current() {
+			Some(image) => format!("{}", image.get_current().display()),
+			None => {
+				String::from("No image, to the moment. Probably because target folders are empty.")
+			}
+		}
+	}
+
+	pub fn len(&self) -> usize {
+		self.data.len()
+	}
+
+	pub fn get_current_pos(&self) -> Option<usize> {
+		self.position
 	}
 }

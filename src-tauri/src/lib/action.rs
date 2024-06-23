@@ -1,6 +1,3 @@
-use std::sync::Arc;
-use tokio::sync::RwLock;
-
 use rand::{distributions::Alphanumeric, Rng};
 
 #[derive(Debug, Clone)]
@@ -12,21 +9,25 @@ pub enum AppAction {
 }
 
 #[async_recursion::async_recursion]
-pub async fn apply_action(
-	state: Arc<RwLock<crate::AppState>>,
-	action: &AppAction,
-) -> Result<bool, ()> {
+pub async fn apply_action(state: &crate::AppState, action: &AppAction) -> Result<bool, ()> {
 	let mut changed = false;
+
+	log::debug!("*** NEW action = {action:?}");
 
 	match action {
 		AppAction::ChangePosition(step) => {
 			// TODO : check .try_into().unwrap() here
 
-			let old_position = state.read().await.current_position;
-			let max_val: isize = state.read().await.images.len().try_into().unwrap();
+			let old_position = state.images.read().await.get_current_pos();
+			log::debug!("old_position = {old_position:?}");
+
+			let max_val: isize = state.images.read().await.len().try_into().unwrap();
+			log::debug!("max_val = {max_val:?}");
 
 			if let Some(position) = old_position {
 				let position_int: isize = position.try_into().unwrap();
+				log::debug!("position_int = {position_int}");
+
 				let mut new_position: isize = position_int + step;
 
 				if new_position >= max_val {
@@ -39,37 +40,59 @@ pub async fn apply_action(
 					new_position += max_val;
 				}
 
-				let new_position_usize: usize = new_position.try_into().unwrap();
-				state.write().await.set_position(Some(new_position_usize));
+				log::debug!("new_position = {new_position}");
 
-				changed = (old_position != state.read().await.current_position);
+				let new_position_usize: usize = new_position.try_into().unwrap();
+				{
+					log::trace!("trying write MLK-123");
+
+					state
+						.images
+						.write()
+						.await
+						.set_position(Some(new_position_usize), &mut *state.refresh.write().await);
+
+					log::trace!("finished write MLK-123");
+				}
+
+				changed = (old_position != state.images.read().await.get_current_pos());
+
+				log::debug!("changed = {changed}");
+			} else {
+				log::debug!("no current image");
 			}
 		}
 		AppAction::ChangeRandomPosition => {
-			let max_val = state.read().await.images.len();
+			let max_val = state.images.read().await.len();
 
 			let new_position = rand::thread_rng().gen_range(0..max_val);
 
-			state.write().await.set_position(Some(new_position));
+			{
+				log::trace!("trying write SWR-564");
+				state
+					.images
+					.write()
+					.await
+					.set_position(Some(new_position), &mut *state.refresh.write().await);
+				log::trace!("finished write SWR-564");
+			}
 
 			changed = true;
 		}
 		AppAction::Move(id) => {
-			let current_position = state.read().await.current_position;
-			if let Some(position) = current_position {
+			let current_pos = state.images.read().await.get_current_pos();
+			if let Some(position) = current_pos {
 				let mut new_path = std::path::PathBuf::new();
 
 				{
-					let rstate = state.read().await;
-					let output_folder = rstate.settings.output_folders.get(*id);
+					let settings = state.settings.read().await;
+					let output_folder = settings.output_folders.get(*id);
 
 					if let Some(output) = output_folder {
-						if let Some(image) = state.read().await.images.get(position) {
-							let old_path = image.get_current();
-
-							let output_path = super::build_absolute_path(
+						if let Some(image) = state.images.read().await.get_pos(position) {
+							let output_path = common::build_absolute_path(
 								&output.path,
-								rstate.settings_path.clone(),
+								state.settings_path.read().await.clone(),
 							);
 
 							std::fs::create_dir_all(&output_path).unwrap();
@@ -100,93 +123,49 @@ pub async fn apply_action(
 									.into(),
 							);
 
-							if let Ok(path) = super::exec_move(&old_path, &new_path) {
-								changed = true;
-								new_path = path;
-							}
+							log::debug!("new_path = {new_path:?}");
+
+							changed = true;
 						}
 					}
 				}
 
 				if changed {
-					let steps = {
-						let mut state_w = state.write().await;
-
-						if let Some(image) = state_w.images.get_mut(position) {
-							image.moved = Some(new_path);
-							state_w.set_position(Some(position));
-							state_w.settings.steps_after_move
-						} else {
-							todo!()
-						}
-					};
+					log::trace!("trying write SEV-853");
+					state
+						.images
+						.write()
+						.await
+						.move_current(new_path, &mut *state.refresh.write().await)
+						.unwrap();
+					log::trace!("finished write SEV-853");
+					let steps = state.settings.read().await.steps_after_move;
 
 					apply_action(state, &AppAction::ChangePosition(steps))
 						.await
 						.unwrap();
 				}
+			} else {
+				log::debug!("no current image");
 			}
 		}
 		AppAction::RestoreImage => {
-			let current_position = state.read().await.current_position;
-			if let Some(position) = current_position {
-				{
-					if let Some(image) = state.read().await.images.get(position) {
-						let current_path = image.get_current();
-						let mut origin_path = image.origin.clone();
-
-						while origin_path.exists() {
-							let rand_id: String = rand::thread_rng()
-								.sample_iter(&Alphanumeric)
-								.take(8)
-								.map(char::from)
-								.collect();
-
-							let origin_parent = origin_path.parent().unwrap();
-
-							origin_path = origin_parent.join(format!(
-								"{}{}{}",
-								image
-									.origin
-									.file_stem()
-									.map(|val| format!("{}-d-", val.to_string_lossy()))
-									.unwrap_or(String::new()),
-								rand_id,
-								image
-									.origin
-									.extension()
-									.map(|val| format!(".{}", val.to_string_lossy()))
-									.unwrap_or(String::new())
-							));
-						}
-
-						if let Some(parent) = origin_path.parent() {
-							std::fs::create_dir_all(parent).ok();
-						}
-
-						if current_path != origin_path
-							&& std::fs::copy(&current_path, &origin_path).is_ok()
-						{
-							if trash::delete(&current_path).is_ok() {
-								changed = true;
-							} else {
-								trash::delete(&origin_path).ok();
-								// TODO : warn user
-							}
-						}
-					}
-				}
-
-				if changed {
-					let mut state_w = state.write().await;
-					if let Some(image) = state_w.images.get_mut(position) {
-						image.moved = None;
-						state_w.set_position(Some(position));
-					}
-				}
+			log::trace!("trying write VZN-841");
+			if let Err(err) = state
+				.images
+				.write()
+				.await
+				.restore_current(&mut *state.refresh.write().await)
+			{
+				log::error!("error while restaure : {err}");
 			}
+			log::trace!("finished write VZN-841");
+
+			changed = true;
 		}
 	}
+
+	log::debug!("changed = {changed}");
 
 	Ok(changed)
 }

@@ -1,6 +1,6 @@
 [package]
 name = "common"
-version = "2.2.0"
+version = "2.3.0"
 edition = "2021"
 publish = false
 
@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
+log = { workspace = true }
 
 [lints]
 workspace = true

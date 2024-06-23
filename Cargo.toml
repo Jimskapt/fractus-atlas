@@ -7,8 +7,9 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-serde = "1.0.200"
-serde_json = "1.0.116"
+serde = "1.0.203"
+serde_json = "1.0.117"
+log = "0.4.21"
 
 [workspace.lints.rust]
 unused_parens = "allow"
