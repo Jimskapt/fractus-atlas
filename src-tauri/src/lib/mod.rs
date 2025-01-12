@@ -101,79 +101,85 @@ pub async fn run(init_settings: InitSettings) {
 	// shortcuts.insert(String::from("backspace"), action::AppAction::RestoreImage);
 	shortcuts.insert(String::from(" "), action::AppAction::ChangeRandomPosition);
 
-	let mut state = AppState {
-		settings_path: Arc::new(RwLock::new(settings_path)),
-		settings: Arc::new(RwLock::new(settings)),
-		images: Arc::new(RwLock::new(Images::default())),
-		shortcuts: Arc::new(RwLock::new(shortcuts)),
-		watcher: Arc::new(RwLock::new(None)),
-		refresh: Arc::new(RwLock::new(false)),
-	};
+	let state = Arc::new(AppState {
+		settings_path: RwLock::new(settings_path),
+		settings: RwLock::new(settings),
+		images: RwLock::new(Images::default()),
+		shortcuts: RwLock::new(shortcuts),
+		watcher: RwLock::new(None),
+		refresh: RwLock::new(false),
+	});
 
-	let input_folders_for_watcher = state.settings.read().await.input_folders.clone();
-	let settings_path_for_watcher = state.settings_path.read().await.clone();
-	let settings_for_watcher = state.settings.read().await.clone();
-	let images_for_watcher = state.images.clone();
-	let refresh_for_watcher = state.refresh.clone();
+	let state_for_watcher = state.clone();
 	let watcher: notify::ReadDirectoryChangesWatcher =
 		<notify::RecommendedWatcher as notify::Watcher>::new(
 			move |res: Result<notify::Event, notify::Error>| {
-				log::debug!("new watcher event : {res:?}");
+				futures::executor::block_on(async {
+					log::debug!("new watcher event : {res:?}");
 
-				match res {
-					Ok(event) => {
-						if let notify::EventKind::Create(_) = event.kind {
-							if let Some(path) = event.paths.first() {
-								let path_for_task = path.clone();
-								if input_folders_for_watcher.iter().any(|folder| {
-									folder.filter(path, settings_path_for_watcher.clone())
-								}) {
-									futures::executor::block_on(async {
+					match res {
+						Ok(event) => {
+							if let notify::EventKind::Create(_) = event.kind {
+								if let Some(path) = event.paths.first() {
+									let path_for_task = path.clone();
+
+									let state_settings = state_for_watcher.settings.read().await;
+									let input_folders = state_settings.input_folders.as_slice();
+									let state_settings_path =
+										state_for_watcher.settings_path.read().await.clone();
+
+									if input_folders.iter().any(|folder| {
+										folder.filter(path, state_settings_path.clone())
+									}) {
 										log::trace!("trying write PLZ-965");
-										images_for_watcher.write().await.push(
+										state_for_watcher.images.write().await.push(
 											path_for_task,
-											&mut *refresh_for_watcher.write().await,
-											&settings_for_watcher,
+											&mut *state_for_watcher.refresh.write().await,
+											&state_settings,
 										);
 										log::trace!("finished write PLZ-965");
-									});
+									}
 								}
-							}
-						} else if let notify::EventKind::Modify(notify::event::ModifyKind::Name(
-							notify::event::RenameMode::To,
-						)) = event.kind
-						{
-							if let Some(path) = event.paths.first() {
-								let path_for_task = path.clone();
-								if input_folders_for_watcher.iter().any(|folder| {
-									folder.filter(path, settings_path_for_watcher.clone())
-								}) {
-									futures::executor::block_on(async {
+							} else if let notify::EventKind::Modify(
+								notify::event::ModifyKind::Name(notify::event::RenameMode::To),
+							) = event.kind
+							{
+								if let Some(path) = event.paths.first() {
+									let path_for_task = path.clone();
+
+									let state_settings = state_for_watcher.settings.read().await;
+									let input_folders = state_settings.input_folders.as_slice();
+									let state_settings_path =
+										state_for_watcher.settings_path.read().await.clone();
+
+									if input_folders.iter().any(|folder| {
+										folder.filter(path, state_settings_path.clone())
+									}) {
 										log::trace!("trying write TGS-951");
-										images_for_watcher.write().await.push(
+										state_for_watcher.images.write().await.push(
 											path_for_task,
-											&mut *refresh_for_watcher.write().await,
-											&settings_for_watcher,
+											&mut *state_for_watcher.refresh.write().await,
+											&state_settings,
 										);
 										log::trace!("finished write TGS-951");
-									});
+									}
 								}
 							}
 						}
+						Err(_) => todo!(),
 					}
-					Err(_) => todo!(),
-				}
+				})
 			},
 			notify::Config::default(),
 		)
 		.unwrap();
 
-	state.watcher = Arc::new(RwLock::new(Some(watcher)));
+	*state.clone().watcher.write().await = Some(watcher);
 
-	let refresh_for_task = state.refresh.clone();
+	let state_for_task = state.clone();
 	tokio::task::spawn(async move {
 		loop {
-			let refresh = *refresh_for_task.read().await;
+			let refresh = *state_for_task.refresh.read().await;
 			if refresh {
 				APP_HANDLE
 					.get()
@@ -181,7 +187,7 @@ pub async fn run(init_settings: InitSettings) {
 					.emit("request-ui-refresh", ())
 					.unwrap();
 
-				*refresh_for_task.write().await = false;
+				*state_for_task.refresh.write().await = false;
 				tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 			}
 		}
@@ -235,7 +241,7 @@ pub async fn run(init_settings: InitSettings) {
 }
 
 #[tauri::command]
-async fn keyup(state: tauri::State<'_, AppState>, key: String) -> Result<bool, ()> {
+async fn keyup(state: tauri::State<'_, Arc<AppState>>, key: String) -> Result<bool, ()> {
 	let mut changed = Ok(false);
 
 	let processed = key.to_lowercase();
@@ -247,17 +253,17 @@ async fn keyup(state: tauri::State<'_, AppState>, key: String) -> Result<bool, (
 	changed
 }
 #[tauri::command]
-async fn get_current_path(state: tauri::State<'_, AppState>) -> Result<String, ()> {
+async fn get_current_path(state: tauri::State<'_, Arc<AppState>>) -> Result<String, ()> {
 	Ok(state.images.read().await.display_path())
 }
 #[tauri::command]
 async fn get_move_actions(
-	state: tauri::State<'_, AppState>,
+	state: tauri::State<'_, Arc<AppState>>,
 ) -> Result<Vec<common::OutputFolder>, ()> {
 	Ok(state.settings.read().await.output_folders.clone())
 }
 #[tauri::command]
-async fn do_move(state: tauri::State<'_, AppState>, name: String) -> Result<bool, ()> {
+async fn do_move(state: tauri::State<'_, Arc<AppState>>, name: String) -> Result<bool, ()> {
 	let res = if !name.trim().is_empty() {
 		let position = state
 			.settings
@@ -281,7 +287,7 @@ async fn do_move(state: tauri::State<'_, AppState>, name: String) -> Result<bool
 	res
 }
 #[tauri::command]
-async fn change_path(state: tauri::State<'_, AppState>, new_path: String) -> Result<bool, ()> {
+async fn change_path(state: tauri::State<'_, Arc<AppState>>, new_path: String) -> Result<bool, ()> {
 	let mut moved = false;
 
 	let new_pathbuf = std::path::PathBuf::from(new_path);
@@ -331,20 +337,20 @@ async fn change_path(state: tauri::State<'_, AppState>, new_path: String) -> Res
 	}
 }
 #[tauri::command]
-async fn change_position(state: tauri::State<'_, AppState>, step: isize) -> Result<bool, ()> {
+async fn change_position(state: tauri::State<'_, Arc<AppState>>, step: isize) -> Result<bool, ()> {
 	return action::apply_action(state.inner(), &action::AppAction::ChangePosition(step)).await;
 }
 #[tauri::command]
-async fn set_random_position(state: tauri::State<'_, AppState>) -> Result<bool, ()> {
+async fn set_random_position(state: tauri::State<'_, Arc<AppState>>) -> Result<bool, ()> {
 	return action::apply_action(state.inner(), &action::AppAction::ChangeRandomPosition).await;
 }
 #[tauri::command]
-async fn get_settings(state: tauri::State<'_, AppState>) -> Result<common::Settings, ()> {
+async fn get_settings(state: tauri::State<'_, Arc<AppState>>) -> Result<common::Settings, ()> {
 	Ok(state.settings.read().await.clone())
 }
 #[tauri::command]
 async fn set_settings_path(
-	state: tauri::State<'_, AppState>,
+	state: tauri::State<'_, Arc<AppState>>,
 	settings_path: String,
 ) -> Result<Vec<common::SaveMessage>, ()> {
 	let mut messages = vec![];
@@ -405,7 +411,7 @@ async fn set_settings_path(
 }
 #[tauri::command]
 async fn set_settings(
-	state: tauri::State<'_, AppState>,
+	state: tauri::State<'_, Arc<AppState>>,
 	new_settings: common::Settings,
 ) -> Result<Vec<common::SaveMessage>, ()> {
 	let mut modified_settings = new_settings.clone();
@@ -461,12 +467,12 @@ async fn set_settings(
 }
 #[tauri::command]
 async fn get_settings_path(
-	state: tauri::State<'_, AppState>,
+	state: tauri::State<'_, Arc<AppState>>,
 ) -> Result<Option<std::path::PathBuf>, ()> {
 	Ok(state.settings_path.read().await.clone())
 }
 #[tauri::command]
-async fn update_files_list(state: tauri::State<'_, AppState>) -> Result<(), ()> {
+async fn update_files_list(state: tauri::State<'_, Arc<AppState>>) -> Result<(), ()> {
 	let folders = &state.inner().settings.read().await.input_folders;
 	let settings_path = state.inner().settings_path.read().await;
 
@@ -483,6 +489,7 @@ async fn update_files_list(state: tauri::State<'_, AppState>) -> Result<(), ()> 
 
 	for input in &absolute_folders {
 		log::trace!("trying write HSO-497");
+		log::trace!("unwatch {}", input.path.display());
 		notify::Watcher::unwatch(
 			state.inner().watcher.write().await.as_mut().unwrap(),
 			&input.path,
@@ -508,21 +515,27 @@ async fn update_files_list(state: tauri::State<'_, AppState>) -> Result<(), ()> 
 	}
 
 	for input in folders {
-		log::trace!("started browsing {:?}", input.path);
+		let input_path = common::build_absolute_path(
+			&input.path,
+			state.inner().settings_path.read().await.clone(),
+		);
+
+		log::trace!("started browsing {:?}", input_path);
 
 		browse_dir(
 			state.inner(),
-			&input.path,
+			&input_path,
 			input.recursivity.unwrap_or(false),
 		)
 		.await;
 
-		log::trace!("finished browsing {:?}", input.path);
+		log::trace!("finished browsing {:?}", input_path);
 
 		log::trace!("trying write TJK-766");
+		log::trace!("watch {}", input_path.display());
 		notify::Watcher::watch(
 			state.inner().watcher.write().await.as_mut().unwrap(),
-			&input.path,
+			&input_path,
 			if input.recursivity.unwrap_or(false) {
 				notify::RecursiveMode::Recursive
 			} else {
@@ -536,15 +549,15 @@ async fn update_files_list(state: tauri::State<'_, AppState>) -> Result<(), ()> 
 	Ok(())
 }
 #[tauri::command]
-async fn get_current_position(state: tauri::State<'_, AppState>) -> Result<Option<usize>, ()> {
+async fn get_current_position(state: tauri::State<'_, Arc<AppState>>) -> Result<Option<usize>, ()> {
 	Ok(state.images.read().await.get_current_pos())
 }
 #[tauri::command]
-async fn get_images_length(state: tauri::State<'_, AppState>) -> Result<usize, ()> {
+async fn get_images_length(state: tauri::State<'_, Arc<AppState>>) -> Result<usize, ()> {
 	Ok(state.images.read().await.len())
 }
 #[tauri::command]
-async fn get_ai_prompt(state: tauri::State<'_, AppState>) -> Result<Option<String>, ()> {
+async fn get_ai_prompt(state: tauri::State<'_, Arc<AppState>>) -> Result<Option<String>, ()> {
 	if let Some(image) = state.images.read().await.get_current() {
 		let path = image.get_current();
 
@@ -560,14 +573,14 @@ async fn get_ai_prompt(state: tauri::State<'_, AppState>) -> Result<Option<Strin
 	return Ok(None);
 }
 #[tauri::command]
-async fn current_can_be_restored(state: tauri::State<'_, AppState>) -> Result<bool, ()> {
+async fn current_can_be_restored(state: tauri::State<'_, Arc<AppState>>) -> Result<bool, ()> {
 	match state.images.read().await.get_current() {
 		Some(image) => Ok(image.moved.is_some()),
 		None => Ok(false),
 	}
 }
 #[tauri::command]
-async fn os_open(state: tauri::State<'_, AppState>, open_target: String) -> Result<(), ()> {
+async fn os_open(state: tauri::State<'_, Arc<AppState>>, open_target: String) -> Result<(), ()> {
 	if let Some(path) = state
 		.images
 		.read()
@@ -588,7 +601,7 @@ async fn os_open(state: tauri::State<'_, AppState>, open_target: String) -> Resu
 	Ok(())
 }
 #[tauri::command]
-async fn is_confirm_rename(state: tauri::State<'_, AppState>) -> Result<bool, ()> {
+async fn is_confirm_rename(state: tauri::State<'_, Arc<AppState>>) -> Result<bool, ()> {
 	Ok(state.settings.read().await.confirm_rename.unwrap_or(true))
 }
 #[tauri::command]
@@ -747,7 +760,7 @@ async fn get_image(
 	app: &tauri::AppHandle,
 	_request: tauri::http::Request<Vec<u8>>,
 ) -> tauri::http::Response<Vec<u8>> {
-	let app_state: tauri::State<AppState> = app.state();
+	let app_state: tauri::State<Arc<AppState>> = app.state();
 	let images = app_state.images.read().await;
 
 	tauri::http::Response::builder()
@@ -780,12 +793,12 @@ pub enum InitSettings {
 }
 
 pub struct AppState {
-	settings_path: Arc<RwLock<Option<PathBuf>>>,
-	settings: Arc<RwLock<common::Settings>>,
-	images: Arc<RwLock<Images>>,
-	shortcuts: Arc<RwLock<BTreeMap<String, action::AppAction>>>,
-	watcher: Arc<RwLock<Option<notify::RecommendedWatcher>>>,
-	refresh: Arc<RwLock<bool>>,
+	settings_path: RwLock<Option<PathBuf>>,
+	settings: RwLock<common::Settings>,
+	images: RwLock<Images>,
+	shortcuts: RwLock<BTreeMap<String, action::AppAction>>,
+	watcher: RwLock<Option<notify::RecommendedWatcher>>,
+	refresh: RwLock<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -832,7 +845,7 @@ impl Images {
 
 			if self.position.is_none() {
 				self.set_position(Some(0), state_refresh);
-			} else if on_last && settings.move_to_newest.unwrap_or(false) == true {
+			} else if on_last && settings.move_to_newest.unwrap_or(false) {
 				self.set_position(Some(self.data.len().saturating_sub(1)), state_refresh);
 			}
 
@@ -867,8 +880,13 @@ impl Images {
 			let move_res = exec_move(&current.get_current(), &new_path);
 
 			if move_res.is_ok() {
-				let pos = self.get_current_pos().unwrap();
-				self.data.get_mut(pos).unwrap().moved = Some(new_path);
+				let pos = self
+					.get_current_pos()
+					.ok_or(String::from("current position is not set"))?;
+				self.data
+					.get_mut(pos)
+					.ok_or(String::from("can not get mutable data"))?
+					.moved = Some(new_path);
 
 				*state_refresh = true;
 
@@ -888,8 +906,13 @@ impl Images {
 
 			let move_res = exec_move(&current_path, &origin_path);
 			if move_res.is_ok() {
-				let pos = self.get_current_pos().unwrap();
-				self.data.get_mut(pos).unwrap().moved = None;
+				let pos = self
+					.get_current_pos()
+					.ok_or(String::from("current position is not set"))?;
+				self.data
+					.get_mut(pos)
+					.ok_or(String::from("can not get mutable data"))?
+					.moved = None;
 
 				*state_refresh = true;
 

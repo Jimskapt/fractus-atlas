@@ -1,6 +1,6 @@
 {
   "productName": "fractus-atlas",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "identifier": "com.jimskapt.fractus-atlas",
   "build": {
     "frontendDist": "../src-front"
