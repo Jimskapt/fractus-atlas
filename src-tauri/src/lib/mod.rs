@@ -1,6 +1,6 @@
 use rand::Rng;
 use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
-use tauri::Manager;
+use tauri::{Emitter, Listener, Manager};
 use tokio::sync::RwLock;
 
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle> = std::sync::OnceLock::new();
@@ -112,6 +112,7 @@ pub async fn run(init_settings: InitSettings) {
 
 	let input_folders_for_watcher = state.settings.read().await.input_folders.clone();
 	let settings_path_for_watcher = state.settings_path.read().await.clone();
+	let settings_for_watcher = state.settings.read().await.clone();
 	let images_for_watcher = state.images.clone();
 	let refresh_for_watcher = state.refresh.clone();
 	let watcher: notify::ReadDirectoryChangesWatcher =
@@ -132,6 +133,7 @@ pub async fn run(init_settings: InitSettings) {
 										images_for_watcher.write().await.push(
 											path_for_task,
 											&mut *refresh_for_watcher.write().await,
+											&settings_for_watcher,
 										);
 										log::trace!("finished write PLZ-965");
 									});
@@ -151,6 +153,7 @@ pub async fn run(init_settings: InitSettings) {
 										images_for_watcher.write().await.push(
 											path_for_task,
 											&mut *refresh_for_watcher.write().await,
+											&settings_for_watcher,
 										);
 										log::trace!("finished write TGS-951");
 									});
@@ -219,7 +222,8 @@ pub async fn run(init_settings: InitSettings) {
 			get_backend_version,
 		])
 		.manage(state)
-		.register_asynchronous_uri_scheme_protocol("image", |app, request, responder| {
+		.register_asynchronous_uri_scheme_protocol("image", |ctx, request, responder| {
+			let app = ctx.app_handle();
 			let app_for_async = app.clone();
 			tauri::async_runtime::spawn(async move {
 				let response = get_image(&app_for_async, request).await;
@@ -614,11 +618,11 @@ async fn browse_dir(state: &AppState, path: &std::path::Path, recursivity: bool)
 
 				{
 					log::trace!("trying write OGR-227");
-					state
-						.images
-						.write()
-						.await
-						.push(merged_path, &mut *state.refresh.write().await);
+					state.images.write().await.push(
+						merged_path,
+						&mut *state.refresh.write().await,
+						&state.settings.read().await.clone(),
+					);
 					log::trace!("finished write OGR-227");
 				}
 			} else {
@@ -806,7 +810,12 @@ struct Images {
 }
 
 impl Images {
-	pub fn push(&mut self, new: impl Into<PathBuf>, state_refresh: &mut bool) -> Option<PathBuf> {
+	pub fn push(
+		&mut self,
+		new: impl Into<PathBuf>,
+		state_refresh: &mut bool,
+		settings: &common::Settings,
+	) -> Option<PathBuf> {
 		let new_path = new.into();
 
 		if !self
@@ -814,6 +823,8 @@ impl Images {
 			.iter()
 			.any(|image| image.origin == new_path || image.moved == Some(new_path.clone()))
 		{
+			let on_last = self.position == Some(self.data.len().saturating_sub(1));
+
 			self.data.push(Image {
 				origin: new_path,
 				moved: None,
@@ -821,6 +832,8 @@ impl Images {
 
 			if self.position.is_none() {
 				self.set_position(Some(0), state_refresh);
+			} else if on_last && settings.move_to_newest.unwrap_or(false) == true {
+				self.set_position(Some(self.data.len().saturating_sub(1)), state_refresh);
 			}
 
 			*state_refresh = true;

@@ -9,6 +9,7 @@ pub struct Settings {
 	pub sorting: SortingOrder,
 	pub confirm_rename: Option<bool>,
 	pub settings_version: Option<String>,
+	pub move_to_newest: Option<bool>,
 }
 impl Default for Settings {
 	fn default() -> Self {
@@ -39,6 +40,7 @@ impl Default for Settings {
 			sorting: SortingOrder::FileName,
 			confirm_rename: Some(true),
 			settings_version: Some(String::from(env!("CARGO_PKG_VERSION"))),
+			move_to_newest: Some(true),
 		}
 	}
 }

@@ -6,10 +6,16 @@ members = [
 ]
 resolver = "2"
 
+[workspace.package]
+version = "2.4.0"
+authors = ["Jimskapt"]
+edition = "2021"
+repository = "https://github.com/Jimskapt/fractus-atlas"
+
 [workspace.dependencies]
-serde = "1.0.203"
-serde_json = "1.0.117"
-log = "0.4.21"
+serde = "1.0.217"
+serde_json = "1.0.135"
+log = "0.4.24"
 
 [workspace.lints.rust]
 unused_parens = "allow"

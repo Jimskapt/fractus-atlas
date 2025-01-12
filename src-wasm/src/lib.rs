@@ -67,10 +67,17 @@ pub async fn build_settings_form() {
 				.unwrap();
 
 		p.set_inner_html(&format!(
-				"frontend version : {fe}<br>backend version : {backend_version}<br>settings version : {set}",
-				fe = env!("CARGO_PKG_VERSION"),
-				set = settings.settings_version.unwrap_or_else(|| { String::from("2.0.0") })
-			));
+			r#"
+				Frontend version : {front}<br>
+				Backend version : {backend_version}<br>
+				Settings version : {sett}<br>
+				Website : <a href="{website}" target="_blank">{website}</a>"#,
+			front = env!("CARGO_PKG_VERSION"),
+			website = env!("CARGO_PKG_REPOSITORY"),
+			sett = settings
+				.settings_version
+				.unwrap_or_else(|| { String::from("2.0.0") })
+		));
 
 		dyn_settings_form.append_child(&p).unwrap();
 	}
@@ -112,6 +119,30 @@ pub async fn build_settings_form() {
 		}
 
 		label.set_inner_html("&nbsp;confirm renaming in path field");
+		label
+			.insert_before(&input, label.first_child().as_ref())
+			.unwrap();
+
+		dyn_settings_form.append_child(&label).unwrap();
+	}
+
+	{
+		let label = document.create_element("label").unwrap();
+		label.set_attribute("class", "solo").unwrap();
+
+		let input = document.create_element("input").unwrap();
+		input.set_attribute("type", "checkbox").unwrap();
+		input.set_attribute("id", "move_to_newest").unwrap();
+		input
+			.set_attribute("onchange", "set_modified(false)")
+			.unwrap();
+		if settings.move_to_newest.unwrap_or(false) {
+			input.set_attribute("checked", "checked").unwrap();
+		}
+
+		label.set_inner_html(
+			"&nbsp;if on last image, move on to the newest which will appear later",
+		);
 		label
 			.insert_before(&input, label.first_child().as_ref())
 			.unwrap();
@@ -228,6 +259,13 @@ pub async fn save_settings() {
 		.dyn_into::<web_sys::HtmlInputElement>()
 		.unwrap()
 		.checked();
+	let move_to_newest = document
+		.query_selector("#move_to_newest")
+		.unwrap()
+		.unwrap()
+		.dyn_into::<web_sys::HtmlInputElement>()
+		.unwrap()
+		.checked();
 
 	//////////////////////
 
@@ -237,6 +275,7 @@ pub async fn save_settings() {
 	new_settings.input_folders = input_folders;
 	new_settings.output_folders = output_folders;
 	new_settings.confirm_rename = Some(confirm_rename);
+	new_settings.move_to_newest = Some(move_to_newest);
 
 	//////////////////////
 
