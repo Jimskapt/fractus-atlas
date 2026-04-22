@@ -25,11 +25,11 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 log = { workspace = true }
 
-tauri = { version = "2.2.1", features = [] }
+tauri = { version = "2.2.5", features = [] }
 tauri-plugin-shell = "2"
 toml = "0.8.19"
-tokio = { version = "1.43.0", features = ["rt-multi-thread", "macros", "fs", "time"] }
-rand = "0.8.5"
+tokio = { version = "1.43.1", features = ["rt-multi-thread", "macros", "fs", "time"] }
+rand = "0.8.6"
 trash = "4.1.1"
 encoding_rs = "0.8.35"
 async-recursion = "1.1.1"
